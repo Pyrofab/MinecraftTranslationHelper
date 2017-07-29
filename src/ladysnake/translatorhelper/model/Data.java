@@ -22,17 +22,19 @@ public class Data {
 	private Map<String, Map<String, String>> translations;
 	/**language file, key, value*/
 	private Map<String, Map<String, String>> translationFiles;
-	private Pattern translationPattern;
+	private static final Pattern translationPattern = Pattern.compile("(.*?)=(.*)");
 
 	public Data() {
 		translations = new HashMap<>();
 		translationFiles = new HashMap<>();
-		translationPattern = Pattern.compile("(.*?)=(.*)");
 	}
 	
 	public void load(File[] langFiles) {
 		if(langFiles == null || langFiles.length == 0)
 			return;
+		
+		translations.clear();
+		translationFiles.clear();
 		
 		for(File file : langFiles) {
 			translationFiles.put(file.getName(), new TreeMap<>());
