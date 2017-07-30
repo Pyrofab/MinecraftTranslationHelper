@@ -1,11 +1,14 @@
 package ladysnake.translatorhelper.controller;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 import javafx.event.ActionEvent;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.TableColumn.CellEditEvent;
+import javafx.scene.control.TextInputDialog;
 import javafx.stage.DirectoryChooser;
 import ladysnake.translatorhelper.application.TranslationHelper;
 import ladysnake.translatorhelper.model.Data;
@@ -38,7 +41,7 @@ public class ControllerFx {
             for (int i = 0; i < langFiles.length; i++) {
 				langNames[i+1] = langFiles[i].getName();
 			}
-            view.generateTable(data.generateDataInMap(), langNames);
+            view.generateTable(data.getTranslationList(), langNames);
         }
     }
 	
@@ -47,13 +50,23 @@ public class ControllerFx {
 	}
 	
 	public void onEditCommitKey(CellEditEvent<Map<String, String>, String> event) {
-		System.out.println("old translation key:" + event.getNewValue());
-		data.updateTranslationKey(event.getOldValue(), event.getNewValue());
+		data.updateTranslationKey(event.getOldValue(), event.getNewValue(), event.getTablePosition().getRow());
 	}
 
 	public void onEditCommit(CellEditEvent<Map<String, String>, String> event) {
-		String translationKey = event.getRowValue().get(Data.TRANSLATION_KEY);
-		System.out.println("translation key:" + translationKey);
-		data.updateTranslation(translationKey, event.getNewValue(), event.getTableColumn().getText());
+		data.updateTranslation(event.getTablePosition().getRow(), event.getNewValue(), event.getTableColumn().getText());
+	}
+	
+	public void onDeleteRow(ActionEvent event) {
+		data.removeTranslation(view.getTable().getSelectionModel().getSelectedIndex());
+	}
+	
+	public void onInsertRow(ActionEvent event) {
+		Dialog<String> d = new TextInputDialog();
+		d.setGraphic(null);
+		d.setHeaderText("Enter the new translation key:");
+		d.setTitle("New translation");
+		d.showAndWait().ifPresent(data::addTranslation);
+		view.getTable().sort();
 	}
 }

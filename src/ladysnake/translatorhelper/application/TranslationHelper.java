@@ -8,6 +8,8 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -15,7 +17,6 @@ import javafx.scene.control.cell.MapValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
@@ -28,8 +29,8 @@ public class TranslationHelper extends Application {
 	private ControllerFx control;
 	private Stage stage;
 	private BorderPane borderPane;
+	private ContextMenu contextMenu;
 	private TableView<Map<String, String>> trTable;
-	private final VBox vbox = new VBox();
 
 	@Override
 	public void start(Stage primaryStage) {
@@ -64,10 +65,13 @@ public class TranslationHelper extends Application {
 	        	grid.add(savebtn, 2, 0);
 	        }
 
-			{
-		        vbox.setSpacing(5);
-		        vbox.setPadding(new Insets(10, 0, 0, 10));
-		        borderPane.setCenter(vbox);
+			{	// context menu (right click)
+				contextMenu = new ContextMenu();
+				MenuItem item1 = new MenuItem("Delete row");
+				item1.setOnAction(control::onDeleteRow);
+				MenuItem item2 = new MenuItem("New translation key");
+				item2.setOnAction(control::onInsertRow);
+				contextMenu.getItems().addAll(item1, item2);
 			}
 			
 			primaryStage.setScene(scene);
@@ -79,9 +83,10 @@ public class TranslationHelper extends Application {
 		}
 	}
 	
-	public void generateTable(ObservableList<Map<String, String>> allTranslations, String[] langNames) {	// translation table
+	public void generateTable(ObservableList<Map<String, String>> allTranslations, String[] langNames) {
 		trTable = new TableView<Map<String, String>>(allTranslations);
 		trTable.setEditable(true);
+		trTable.setContextMenu(contextMenu);
         
         Callback<TableColumn<Map<String, String>, String>, TableCell<Map<String, String>, String>>
         cellFactoryForMap = p -> new TextFieldTableCell<Map<String, String>, String>(new StringConverter<String>() {
@@ -99,12 +104,12 @@ public class TranslationHelper extends Application {
 		 
         trTable.getColumns().clear();
 
-        for(String name : langNames) {
-            TableColumn<Map<String, String>, String> langColumn = new TableColumn<>(name);
+        for(int i = 0; i < langNames.length; i++) {
+            TableColumn<Map<String, String>, String> langColumn = new TableColumn<>(langNames[i]);
             langColumn.setPrefWidth(300);
-            langColumn.setCellValueFactory(new MapValueFactory(name));
+            langColumn.setCellValueFactory(new MapValueFactory(langNames[i]));
             langColumn.setCellFactory(cellFactoryForMap);
-            if(name.equals(Data.TRANSLATION_KEY))
+            if(i == 0)
             	langColumn.setOnEditCommit(control::onEditCommitKey);
             else
             	langColumn.setOnEditCommit(control::onEditCommit);
@@ -113,8 +118,7 @@ public class TranslationHelper extends Application {
         
         System.out.println(allTranslations);
         
-        vbox.getChildren().clear();
-        vbox.getChildren().add(trTable);
+        borderPane.setCenter(trTable);
 	}
 	
 	public TableView<Map<String, String>> getTable() {
