@@ -8,7 +8,7 @@ If you're a modder, you may also be afraid of changing translation keys as that 
 This tool simplifies your work by providing an intuitive interface to work with.
 
 ## Usage instructions
-* Download MinecraftTranslationHelper on the release page. Preferably put it near your translations.
+* Download MinecraftTranslationHelper on the [release page](https://github.com/Pyrofab/MinecraftTranslationHelper/releases). Preferably put it near your translations.
 * Run it and use the "Load a lang folder" button to navigate to the lang folder of the mod you're currently translating.
 * This will load all the existing translations side by side with the key on the left side. You can then edit any field and the program will do the rest.
 * Yes you can drag and drop columns or sort them differently.
