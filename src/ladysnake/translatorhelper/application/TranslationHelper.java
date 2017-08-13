@@ -13,6 +13,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.cell.MapValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.BorderPane;
@@ -21,7 +22,6 @@ import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
 import ladysnake.translatorhelper.controller.ControllerFx;
-import ladysnake.translatorhelper.model.Data;
 
 
 public class TranslationHelper extends Application {
@@ -31,6 +31,7 @@ public class TranslationHelper extends Application {
 	private BorderPane borderPane;
 	private ContextMenu contextMenu;
 	private TableView<Map<String, String>> trTable;
+	private Button wimpTrnslBtn;
 
 	@Override
 	public void start(Stage primaryStage) {
@@ -64,6 +65,15 @@ public class TranslationHelper extends Application {
 	        	savebtn.setOnAction(control::onSave);
 	        	grid.add(savebtn, 2, 0);
 	        }
+			
+			{
+				wimpTrnslBtn = new Button();
+				wimpTrnslBtn.setText("Joker");
+				wimpTrnslBtn.setOnAction(control::onJoker);
+				Tooltip.install(wimpTrnslBtn, new Tooltip("Uses Google Translate to complete the cell based on the english value."));
+				wimpTrnslBtn.setDisable(true);
+				grid.add(wimpTrnslBtn, 3, 0);
+			}
 
 			{	// context menu (right click)
 				contextMenu = new ContextMenu();
@@ -87,6 +97,7 @@ public class TranslationHelper extends Application {
 		trTable = new TableView<Map<String, String>>(allTranslations);
 		trTable.setEditable(true);
 		trTable.setContextMenu(contextMenu);
+		wimpTrnslBtn.setDisable(false);
         
         Callback<TableColumn<Map<String, String>, String>, TableCell<Map<String, String>, String>>
         cellFactoryForMap = p -> new TextFieldTableCell<Map<String, String>, String>(new StringConverter<String>() {

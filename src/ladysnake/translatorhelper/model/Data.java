@@ -5,7 +5,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -14,13 +13,13 @@ import java.util.regex.Pattern;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.scene.shape.Path;
 
 public class Data {
 
 	public static final String TRANSLATION_KEY = "translation key";
 	
 	private static final Pattern TRANSLATION_PATTERN = Pattern.compile("(.*?)=(.*)");
+	private static final Pattern languageISO = Pattern.compile("^(\\w*?)_(.*)");
 
 	private Map<String, Boolean> editedFiles;
 	private ObservableList<Map<String, String>> translationList;
@@ -28,6 +27,7 @@ public class Data {
 	public Data() {
 		editedFiles = new HashMap<>();
 		translationList = FXCollections.observableArrayList();
+		new TranslateAPI();
 	}
 	
 	public void load(File[] langFiles) {
@@ -103,6 +103,7 @@ public class Data {
 	}
 	
 	public void updateTranslation(int selectedRow, String newValue, String lang) {
+		System.out.println(selectedRow + " " + newValue + " " + lang);
 		editedFiles.put(lang, true);
 		translationList.get(selectedRow).put(lang, newValue);
 	}
@@ -116,6 +117,14 @@ public class Data {
 		newMap.put(Data.TRANSLATION_KEY, key);
 		translationList.add(newMap);
 		translationList.sort((o1, o2) -> o1.get(TRANSLATION_KEY).compareTo(o2.get(TRANSLATION_KEY)));
+	}
+	
+	public void generateTranslation(String lang, int selectedRow) {
+		Matcher m1 = languageISO.matcher(lang);
+		if(!m1.matches())
+			return;
+		String badTransl = TranslateAPI.translate(translationList.get(selectedRow).get("en_us.lang"), m1.group(1));
+		updateTranslation(selectedRow, badTransl, lang);
 	}
 	
 }

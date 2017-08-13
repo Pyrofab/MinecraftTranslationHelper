@@ -1,11 +1,12 @@
 package ladysnake.translatorhelper.controller;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 import javafx.event.ActionEvent;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.TableColumn.CellEditEvent;
 import javafx.scene.control.TextInputDialog;
@@ -47,6 +48,19 @@ public class ControllerFx {
 	
 	public void onSave(ActionEvent event) {
 		data.save(langFolder);
+	}
+	
+	public void onJoker(ActionEvent event) {
+		try {
+			data.generateTranslation(view.getTable().getSelectionModel().getSelectedCells().get(0).getTableColumn().getText(), 
+					view.getTable().getSelectionModel().getSelectedIndex());
+			view.getTable().refresh();
+		} catch (NullPointerException | IndexOutOfBoundsException e) {
+			Alert d = new Alert(AlertType.WARNING);
+			d.setTitle("No cell selected");
+			d.setContentText("Please select a cell to autocomplete");
+			d.showAndWait();
+		}
 	}
 	
 	public void onEditCommitKey(CellEditEvent<Map<String, String>, String> event) {
