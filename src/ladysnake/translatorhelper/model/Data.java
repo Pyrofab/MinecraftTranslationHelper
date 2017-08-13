@@ -82,6 +82,14 @@ public class Data {
 		return editedFiles.keySet().stream().anyMatch(editedFiles::get);
 	}
 	
+	public boolean isUnsaved(String lang) {
+		return editedFiles.get(lang);
+	}
+	
+	public void setUnsaved() {
+		editedFiles.replaceAll((s, b) -> true); 
+	}
+	
 	private ObservableList<Map<String, String>> generateDataInMap(Map<String, Map<String, String>> translations) {
         ObservableList<Map<String, String>> allData = FXCollections.observableArrayList();
         translations.forEach((translatKey, values) -> {

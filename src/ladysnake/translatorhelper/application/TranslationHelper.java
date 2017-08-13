@@ -103,6 +103,7 @@ public class TranslationHelper extends Application {
 		trTable = new TableView<Map<String, String>>(allTranslations);
 		trTable.setEditable(true);
 		trTable.setContextMenu(contextMenu);
+		trTable.setOnSort(control::onSort);
 		saveBtn.setDisable(false);
 		wimpTrnslBtn.setDisable(false);
         

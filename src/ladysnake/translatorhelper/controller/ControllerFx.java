@@ -9,7 +9,9 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.SortEvent;
 import javafx.scene.control.TableColumn.CellEditEvent;
+import javafx.scene.control.TableView;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyEvent;
@@ -91,6 +93,10 @@ public class ControllerFx {
 	
 	public void onDeleteRow(ActionEvent event) {
 		data.removeTranslation(view.getTable().getSelectionModel().getSelectedIndex());
+	}
+	
+	public void onSort(SortEvent<TableView<Map<String, String>>> event) {
+		data.setUnsaved();
 	}
 	
 	public void onInsertRow(ActionEvent event) {
