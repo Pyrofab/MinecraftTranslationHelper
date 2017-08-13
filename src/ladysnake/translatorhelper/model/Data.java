@@ -13,13 +13,13 @@ import java.util.regex.Pattern;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import ladysnake.translatorhelper.controller.ControllerFx;
 
 public class Data {
 
 	public static final String TRANSLATION_KEY = "translation key";
 	
 	private static final Pattern TRANSLATION_PATTERN = Pattern.compile("(.*?)=(.*)");
-	private static final Pattern languageISO = Pattern.compile("^(\\w*?)_(.*)");
 
 	private Map<String, Boolean> editedFiles;
 	private ObservableList<Map<String, String>> translationList;
@@ -78,6 +78,10 @@ public class Data {
 		});
 	}
 	
+	public boolean isUnsaved() {
+		return editedFiles.keySet().stream().anyMatch(editedFiles::get);
+	}
+	
 	private ObservableList<Map<String, String>> generateDataInMap(Map<String, Map<String, String>> translations) {
         ObservableList<Map<String, String>> allData = FXCollections.observableArrayList();
         translations.forEach((translatKey, values) -> {
@@ -120,7 +124,7 @@ public class Data {
 	}
 	
 	public void generateTranslation(String lang, int selectedRow) {
-		Matcher m1 = languageISO.matcher(lang);
+		Matcher m1 = ControllerFx.LANG_PATTERN.matcher(lang);
 		if(!m1.matches())
 			return;
 		String badTransl = TranslateAPI.translate(translationList.get(selectedRow).get("en_us.lang"), m1.group(1));

@@ -9,6 +9,9 @@ import java.net.URLEncoder;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+
 /**
  * This class allows simple translation operations
  * @author Fabien
@@ -41,11 +44,19 @@ public class TranslateAPI {
 				if(m3.matches())
 					ret = m3.group(1);
 			} catch (IOException e) {
-				System.err.println("Failed to retrieve answer. Maybe you are offline ?");
+				Alert d = new Alert(AlertType.ERROR);
+				d.setHeaderText("Failed to retrieve answer. Maybe you are offline ?");
+				d.setContentText(e.toString());
+				System.err.println("Failed to retrieve answer from google translate servers");
 				e.printStackTrace();
+				d.showAndWait();
 			}
 		} catch (IOException e) {
+			Alert a = new Alert(AlertType.ERROR);
+			a.setHeaderText("An unexpected error has occured");
+			a.setContentText(e.toString());
 			e.printStackTrace();
+			a.showAndWait();
 		}
 		return ret;
 	}

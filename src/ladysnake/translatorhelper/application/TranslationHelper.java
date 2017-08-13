@@ -31,14 +31,21 @@ public class TranslationHelper extends Application {
 	private BorderPane borderPane;
 	private ContextMenu contextMenu;
 	private TableView<Map<String, String>> trTable;
+	
 	private Button wimpTrnslBtn;
+	private Button saveBtn;
 
 	@Override
 	public void start(Stage primaryStage) {
 		try {
 			this.stage = primaryStage;
+
+			control = new ControllerFx(this);
+
+			stage.setOnCloseRequest(control::onExit);
 			
 			borderPane = new BorderPane();
+        	borderPane.setOnKeyPressed(control::onKeyPressed);
 			
 			GridPane grid = new GridPane();
 			grid.setAlignment(Pos.CENTER);
@@ -47,23 +54,22 @@ public class TranslationHelper extends Application {
 			grid.setPadding(new Insets(10, 10, 10, 10));
 			borderPane.setTop(grid);
 
-			control = new ControllerFx(this);
-
 			Scene scene = new Scene(borderPane,900,400);
 			scene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 	        
 			{	// load button
-		        Button loadbtn = new Button();
-		        loadbtn.setText("Load a lang folder");
-		        loadbtn.setOnAction(control::onChooseFolder);
-		        grid.add(loadbtn, 0, 0, 2, 1);
+		        Button loadBtn = new Button();
+		        loadBtn.setText("Load a lang folder");
+		        loadBtn.setOnAction(control::onChooseFolder);
+		        grid.add(loadBtn, 0, 0, 2, 1);
 	        }
 			
 			{	// save button
-	        	Button savebtn = new Button();
-	        	savebtn.setText("Save");
-	        	savebtn.setOnAction(control::onSave);
-	        	grid.add(savebtn, 2, 0);
+	        	saveBtn = new Button();
+	        	saveBtn.setText("Save");
+	        	saveBtn.setOnAction(control::onSave);
+	        	saveBtn.setDisable(true);
+	        	grid.add(saveBtn, 2, 0);
 	        }
 			
 			{
@@ -97,6 +103,7 @@ public class TranslationHelper extends Application {
 		trTable = new TableView<Map<String, String>>(allTranslations);
 		trTable.setEditable(true);
 		trTable.setContextMenu(contextMenu);
+		saveBtn.setDisable(false);
 		wimpTrnslBtn.setDisable(false);
         
         Callback<TableColumn<Map<String, String>, String>, TableCell<Map<String, String>, String>>
