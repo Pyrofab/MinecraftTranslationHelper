@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
@@ -22,6 +23,7 @@ public class Data {
 	private static final Pattern TRANSLATION_PATTERN = Pattern.compile("(.*?)=(.*)");
 
 	private Map<String, Boolean> editedFiles;
+	private Map<String, Boolean> lockedFiles;
 	private ObservableList<Map<String, String>> translationList;
 
 	public Data() {
@@ -30,13 +32,12 @@ public class Data {
 		new TranslateAPI();
 	}
 	
-	public void load(File[] langFiles) {
-		if(langFiles == null || langFiles.length == 0)
-			return;
-		
+	public ObservableList<Map<String, String>> load(Map<File, Boolean> langFiles) {
+		this.lockedFiles = new HashMap<>();
 		Map<String, Map<String, String>> translations = new TreeMap<>();
 		
-		for(File file : langFiles) {
+		for(File file : langFiles.keySet()) {
+			this.lockedFiles.put(file.getName(), langFiles.get(file));
 			editedFiles.put(file.getName(), false);
 			try (BufferedReader reader = Files.newBufferedReader(file.toPath())) {
 				while(reader.ready()) {
@@ -58,11 +59,13 @@ public class Data {
 		}
 		
 		this.translationList = generateDataInMap(translations);
+		
+		return this.translationList;
 	}
 	
 	public void save(File folder) {
 		editedFiles.forEach((file, edited) -> {
-			if(edited) {
+			if(edited && !isLocked(file)) {
 				try (BufferedWriter writer = Files.newBufferedWriter(new File(folder, file).toPath())) {
 					for(Map<String, String> pairs : translationList) {
 						if(pairs.get(file) != null) {
@@ -79,7 +82,14 @@ public class Data {
 	}
 	
 	public boolean isUnsaved() {
-		return editedFiles.keySet().stream().anyMatch(editedFiles::get);
+		return editedFiles.keySet().stream()
+				.peek(f -> System.out.println(f + " has unsaved modifications"))
+				.filter(f -> !isLocked(f))
+				.anyMatch(editedFiles::get);
+	}
+	
+	public boolean isLocked(String lang) {
+		return lang == TRANSLATION_KEY ? true : lockedFiles.getOrDefault(lang, false);
 	}
 	
 	private ObservableList<Map<String, String>> generateDataInMap(Map<String, Map<String, String>> translations) {
@@ -97,11 +107,7 @@ public class Data {
         return allData;
     }
 	
-	public ObservableList<Map<String, String>> getTranslationList() {
-		return this.translationList;
-	}
-	
-	public void updateTranslationKey(String oldKey, String newKey, int selectedRow) {
+	public void updateTranslationKey(String newKey, int selectedRow) {
 		translationList.get(selectedRow).put(TRANSLATION_KEY, newKey);
 		translationList.get(selectedRow).keySet().stream().filter(s -> !s.equals(TRANSLATION_KEY)).forEach(l -> editedFiles.put(l, true));
 	}
