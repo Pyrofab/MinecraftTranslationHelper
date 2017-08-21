@@ -2,6 +2,8 @@ package ladysnake.translatorhelper.application;
 	
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Predicate;
 
 import javafx.application.Application;
@@ -11,6 +13,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableCell;
@@ -29,11 +32,14 @@ import ladysnake.translatorhelper.controller.ControllerFx;
 
 public class TranslationHelper extends Application {
 	
+	public static final ExecutorService THREADPOOL = Executors.newCachedThreadPool();
+	
 	private ControllerFx control;
 	private Stage stage;
 	private BorderPane borderPane;
-	private ContextMenu contextMenu;
+	private ContextMenu contextMenuTable;
 	private TableView<Map<String, String>> trTable;
+	private Label statusLabel;
 	
 	private Button wimpTrnslBtn;
 	private Button saveBtn;
@@ -107,12 +113,16 @@ public class TranslationHelper extends Application {
 			}
 
 			{	// context menu (right click)
-				contextMenu = new ContextMenu();
+				contextMenuTable = new ContextMenu();
 				MenuItem item1 = new MenuItem("Delete row");
 				item1.setOnAction(control::onDeleteRow);
 				MenuItem item2 = new MenuItem("Change translation key");
 				item2.setOnAction(control::onEditRowKey);
-				contextMenu.getItems().addAll(item1, item2);
+				contextMenuTable.getItems().addAll(item1, item2);
+			}
+			
+			{
+				borderPane.setBottom(statusLabel = new Label("status: no lang folder selected"));
 			}
 			
 			primaryStage.setScene(scene);
@@ -127,7 +137,7 @@ public class TranslationHelper extends Application {
 	public void generateTable(ObservableList<Map<String, String>> allTranslations, List<String> langNames, Predicate<String> isLocked) {
 		trTable = new TableView<Map<String, String>>(allTranslations);
 		trTable.setEditable(true);
-		trTable.setContextMenu(contextMenu);
+		trTable.setContextMenu(contextMenuTable);
 		saveBtn.setDisable(false);
 		wimpTrnslBtn.setDisable(false);
 		newThing.setDisable(false);
@@ -149,6 +159,10 @@ public class TranslationHelper extends Application {
         langColumn.setEditable(!locked);
        	langColumn.setOnEditCommit(control::onEditCommit);
         trTable.getColumns().add(langColumn);
+	}
+	
+	public void setStatus(String status) {
+		this.statusLabel.setText("status: " + status);
 	}
 	
 	public TableView<Map<String, String>> getTable() {

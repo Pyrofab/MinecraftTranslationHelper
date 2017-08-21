@@ -1,19 +1,21 @@
 package ladysnake.translatorhelper.controller;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
-import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableColumn.CellEditEvent;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.input.KeyCodeCombination;
@@ -32,7 +34,6 @@ public class ControllerFx {
 	private File langFolder;
 	
 	public static final Pattern LANG_PATTERN = Pattern.compile("^(\\w*?)_(.*?)\\.lang$");
-	private static final String enUS = "en_us.lang";
 	
 	public ControllerFx(TranslationHelper view) {
 		super();
@@ -49,14 +50,17 @@ public class ControllerFx {
 	public void onChooseFolder(ActionEvent event) {
 		langFolder = fileChooser.showDialog(view.getStage());
         if (langFolder != null) {
+    		view.setStatus("loading lang files");
             Map<File, Boolean> lockedFiles = new SelectFilesDialog(
             		Arrays.asList(langFolder.listFiles(f -> f.isFile() && LANG_PATTERN.matcher(f.getName()).matches()))).showAndWait().get();
             List<String> langNames = new ArrayList<>(lockedFiles.keySet().stream()
             		.map(f -> f.getName())
-            		.sorted((s1, s2) -> s1.equalsIgnoreCase(enUS) ? -1 : s2.equalsIgnoreCase(enUS) ? 1 : s1.compareTo(s2))
+            		.sorted((s1, s2) -> s1.equalsIgnoreCase(Data.EN_US) ? -1 : s2.equalsIgnoreCase(Data.EN_US) ? 1 : s1.compareTo(s2))
             		.collect(Collectors.toList()));
             langNames.add(0, Data.TRANSLATION_KEY);
             view.generateTable(data.load(lockedFiles), langNames, data::isLocked);
+            fileChooser.setInitialDirectory(langFolder.getParentFile());
+            view.setStatus("idle");
         }
     }
 	
@@ -92,10 +96,46 @@ public class ControllerFx {
 	 */
 	public void onJoker(ActionEvent event) {
 		try {
-			data.generateTranslation(view.getTable().getSelectionModel().getSelectedCells().get(0).getTableColumn().getText(), 
-					view.getTable().getSelectionModel().getSelectedIndex());
-			view.getTable().refresh();
+			view.setStatus("fetching translation");
+			TranslationHelper.THREADPOOL.submit(new Task<String>() {
+				
+				@Override
+				protected String call() throws IOException {
+					return data.generateTranslation(
+							view.getTable().getSelectionModel().getSelectedCells().get(0).getTableColumn().getText(), 
+							view.getTable().getSelectionModel().getSelectedIndex());
+				}
+
+				@Override 
+				protected void succeeded() {
+			        super.succeeded();
+			        try {
+			        	data.updateTranslation(
+			        			view.getTable().getSelectionModel().getSelectedIndex(), 
+			        			this.get(), 
+			        			view.getTable().getSelectionModel().getSelectedCells().get(0).getTableColumn().getText());
+						view.getTable().refresh();
+						view.setStatus("idle");
+					} catch (InterruptedException | ExecutionException e) {
+						e.printStackTrace();
+						failed();
+					}
+			    }
+
+				@Override 
+				protected void failed() {
+				    super.failed();
+					Alert d = new Alert(AlertType.ERROR);
+					d.setHeaderText("Failed to retrieve answer. Maybe you are offline ?");
+					d.setContentText(this.getException().toString());
+					this.getException().printStackTrace();
+					d.showAndWait();
+				    view.setStatus("failed to retrieve translation");
+				}
+
+			});
 		} catch (NullPointerException | IndexOutOfBoundsException e) {
+			e.printStackTrace();
 			Alert d = new Alert(AlertType.INFORMATION);
 			d.setTitle("No cell selected");
 			d.setHeaderText("Please select a cell to autocomplete");

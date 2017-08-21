@@ -6,9 +6,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,18 +20,20 @@ import ladysnake.translatorhelper.controller.ControllerFx;
 
 public class Data {
 
-	public static final String TRANSLATION_KEY = "translation key";
+	public static final String TRANSLATION_KEY = "Translation key";
 	
 	private static final Pattern TRANSLATION_PATTERN = Pattern.compile("(.*?)=(.*)");
+	public static final String EN_US = "en_us.lang";
 
 	private Map<String, Boolean> editedFiles;
 	private Map<String, Boolean> lockedFiles;
 	private ObservableList<Map<String, String>> translationList;
+	private ExecutorService threadPool;
 
 	public Data() {
 		editedFiles = new HashMap<>();
 		translationList = FXCollections.observableArrayList();
-		new TranslateAPI();
+		threadPool = Executors.newCachedThreadPool();
 	}
 	
 	public ObservableList<Map<String, String>> load(Map<File, Boolean> langFiles) {
@@ -83,7 +87,7 @@ public class Data {
 	
 	public boolean isUnsaved() {
 		return editedFiles.keySet().stream()
-				.peek(f -> System.out.println(f + " has unsaved modifications"))
+				.peek(f -> System.out.println(f + (editedFiles.get(f) ? " has" : " doesn't have") + " unsaved modifications"))
 				.filter(f -> !isLocked(f))
 				.anyMatch(editedFiles::get);
 	}
@@ -98,9 +102,7 @@ public class Data {
         	Map<String, String> dataRow = new HashMap<>();
 
         	dataRow.put(TRANSLATION_KEY, translatKey);
-        	values.forEach((translatFile, translatValue) -> {
-       			dataRow.put(translatFile, translatValue);
-        	});
+        	values.forEach(dataRow::put);
         	
         	allData.add(dataRow);
         });
@@ -129,12 +131,15 @@ public class Data {
 		translationList.sort((o1, o2) -> o1.get(TRANSLATION_KEY).compareTo(o2.get(TRANSLATION_KEY)));
 	}
 	
-	public void generateTranslation(String lang, int selectedRow) {
+	public String generateTranslation(String lang, int selectedRow) throws IOException {
 		Matcher m1 = ControllerFx.LANG_PATTERN.matcher(lang);
 		if(!m1.matches())
-			return;
-		String badTransl = TranslateAPI.translate(translationList.get(selectedRow).get("en_us.lang"), m1.group(1));
-		updateTranslation(selectedRow, badTransl, lang);
+			throw new IllegalArgumentException("The provided String must be a proper lang file");
+		
+		String badTransl = TranslateAPI.translate(translationList.get(selectedRow).containsKey(EN_US) 
+				? translationList.get(selectedRow).get(EN_US)
+				: translationList.get(selectedRow).getOrDefault("en_US.lang", ""), m1.group(1));
+		return badTransl;
 	}
 	
 }

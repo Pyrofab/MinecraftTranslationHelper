@@ -23,40 +23,26 @@ public class TranslateAPI {
 	private static final String userAgent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/53.0.2785.143 Chrome/53.0.2785.143 Safari/537.36";
 	
 	
-	public static String translate(String sourceText, String targetLang) {
+	public static String translate(String sourceText, String targetLang) throws IOException {
 		return translate(sourceText, targetLang, "en");
 	}
 	
-	public static String translate(String sourceText, String targetLang, String sourceLang) {
+	public static String translate(String sourceText, String targetLang, String sourceLang) throws IOException {
 		String ret = "";
-		try {
-			String uriString = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" 
-			        + sourceLang + "&tl=" + targetLang + "&dt=t&q=" + URLEncoder.encode(sourceText, "UTF-8");
-			System.out.println(uriString);
-			URL url = new URL(uriString);
-			URLConnection conn = url.openConnection();
-			conn.setRequestProperty("User-Agent", userAgent);
-			try(BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+		if(!sourceText.trim().isEmpty()) {
+				String uriString = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" 
+				        + sourceLang + "&tl=" + targetLang + "&dt=t&q=" + URLEncoder.encode(sourceText, "UTF-8");
+				System.out.println(uriString);
+				URL url = new URL(uriString);
+				URLConnection conn = url.openConnection();
+				conn.setRequestProperty("User-Agent", userAgent);
+				BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 				String res = "";
 				while(reader.ready())
 					res += reader.readLine();
 				Matcher m3 = resultParser.matcher(res);
 				if(m3.matches())
 					ret = m3.group(1);
-			} catch (IOException e) {
-				Alert d = new Alert(AlertType.ERROR);
-				d.setHeaderText("Failed to retrieve answer. Maybe you are offline ?");
-				d.setContentText(e.toString());
-				System.err.println("Failed to retrieve answer from google translate servers");
-				e.printStackTrace();
-				d.showAndWait();
-			}
-		} catch (IOException e) {
-			Alert a = new Alert(AlertType.ERROR);
-			a.setHeaderText("An unexpected error has occured");
-			a.setContentText(e.toString());
-			e.printStackTrace();
-			a.showAndWait();
 		}
 		return ret;
 	}
