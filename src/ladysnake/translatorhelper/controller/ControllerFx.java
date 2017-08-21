@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -16,6 +17,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.SortEvent;
 import javafx.scene.control.TableColumn.CellEditEvent;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.input.KeyCodeCombination;
@@ -51,16 +53,21 @@ public class ControllerFx {
 		langFolder = fileChooser.showDialog(view.getStage());
         if (langFolder != null) {
     		view.setStatus("loading lang files");
-            Map<File, Boolean> lockedFiles = new SelectFilesDialog(
-            		Arrays.asList(langFolder.listFiles(f -> f.isFile() && LANG_PATTERN.matcher(f.getName()).matches()))).showAndWait().get();
-            List<String> langNames = new ArrayList<>(lockedFiles.keySet().stream()
-            		.map(f -> f.getName())
-            		.sorted((s1, s2) -> s1.equalsIgnoreCase(Data.EN_US) ? -1 : s2.equalsIgnoreCase(Data.EN_US) ? 1 : s1.compareTo(s2))
-            		.collect(Collectors.toList()));
-            langNames.add(0, Data.TRANSLATION_KEY);
-            view.generateTable(data.load(lockedFiles), langNames, data::isLocked);
-            fileChooser.setInitialDirectory(langFolder.getParentFile());
-            view.setStatus("idle");
+    		try {
+	            Map<File, Boolean> lockedFiles = new SelectFilesDialog(
+	            		Arrays.asList(langFolder.listFiles(f -> f.isFile() && LANG_PATTERN.matcher(f.getName()).matches()))).showAndWait().get();
+	            List<String> langNames = new ArrayList<>(lockedFiles.keySet().stream()
+	            		.map(f -> f.getName())
+	            		.sorted((s1, s2) -> s1.equalsIgnoreCase(Data.EN_US) ? -1 : s2.equalsIgnoreCase(Data.EN_US) ? 1 : s1.compareTo(s2))
+	            		.collect(Collectors.toList()));
+	            langNames.add(0, Data.TRANSLATION_KEY);
+	            view.generateTable(data.load(lockedFiles), langNames, data::isLocked);
+	            fileChooser.setInitialDirectory(langFolder.getParentFile());
+	            view.setStatus("idle");
+    		} catch (NoSuchElementException e) {
+    			System.err.println("Operation cancelled : " + e.getLocalizedMessage());
+    			view.setStatus("no lang folder selected");
+    		}
         }
     }
 	
@@ -168,6 +175,10 @@ public class ControllerFx {
 		d.showAndWait().ifPresent(s -> data.updateTranslationKey(s, view.getTable().getSelectionModel().getSelectedIndex()));
 		view.getTable().refresh();
 		view.getTable().sort();
+	}
+	
+	public void onSort(SortEvent event) {
+		data.setUnsaved();
 	}
 	
 	/**

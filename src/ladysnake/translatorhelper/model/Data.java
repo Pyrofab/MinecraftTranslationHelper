@@ -28,12 +28,10 @@ public class Data {
 	private Map<String, Boolean> editedFiles;
 	private Map<String, Boolean> lockedFiles;
 	private ObservableList<Map<String, String>> translationList;
-	private ExecutorService threadPool;
 
 	public Data() {
 		editedFiles = new HashMap<>();
 		translationList = FXCollections.observableArrayList();
-		threadPool = Executors.newCachedThreadPool();
 	}
 	
 	public ObservableList<Map<String, String>> load(Map<File, Boolean> langFiles) {
@@ -50,10 +48,8 @@ public class Data {
 					if(m.matches()) {
 						String key = m.group(1);
 						Map<String, String> values = translations.get(key);
-						if(values == null) {
-							values = new HashMap<>();
-							translations.put(m.group(1), values);
-						}
+						if(values == null)
+							translations.put(m.group(1), values = new HashMap<>());
 						values.put(file.getName(), m.group(2));
 					}
 				}
@@ -90,6 +86,10 @@ public class Data {
 				.peek(f -> System.out.println(f + (editedFiles.get(f) ? " has" : " doesn't have") + " unsaved modifications"))
 				.filter(f -> !isLocked(f))
 				.anyMatch(editedFiles::get);
+	}
+	
+	public void setUnsaved() {
+		editedFiles.replaceAll((s, b) -> isLocked(s) ? false : true); 
 	}
 	
 	public boolean isLocked(String lang) {

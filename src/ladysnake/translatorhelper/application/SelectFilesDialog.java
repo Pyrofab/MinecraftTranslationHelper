@@ -4,23 +4,23 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.scene.control.Tooltip;
-import javafx.scene.layout.Background;
-import javafx.scene.layout.BackgroundFill;
-import javafx.scene.layout.Border;
-import javafx.scene.layout.BorderStroke;
-import javafx.scene.layout.BorderStrokeStyle;
-import javafx.scene.layout.CornerRadii;
+import javafx.scene.control.cell.CheckBoxTableCell;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
-import javafx.scene.paint.Color;
 
 public class SelectFilesDialog extends Dialog<Map<File, Boolean>> {
 	
@@ -30,76 +30,62 @@ public class SelectFilesDialog extends Dialog<Map<File, Boolean>> {
 	private static Tooltip lockTip = new Tooltip("If checked, any changes made to this file will not be saved");
 	
 	public SelectFilesDialog(List<File> files) {
-		locked = new HashMap<>();
-		files.forEach(f -> locked.put(f, false));
-		ListView<File> list = new ListView(FXCollections.observableList(files));
-		list.setCellFactory(v -> new FileListCell());
-		GridPane pane = new GridPane();
-		Border border = new Border(new BorderStroke(Color.LIGHTGRAY, BorderStrokeStyle.SOLID, null, null));
-		Background background = new Background(new BackgroundFill(Color.WHITE, null, null));
-		{
-			Label l = new Label("Open ");
-			l.setBorder(border);
-			l.setBackground(background);
-			Tooltip.install(l, openTip);
-			pane.add(l, 0, 0);
-		}
-		{
-			Label l = new Label("Lock");
-			l.setBorder(border);
-			l.setBackground(background);
-			Tooltip.install(l, lockTip);
-			pane.add(l, 1, 0);
-		}
-		pane.add(list, 0, 1, 3, 1);
-		this.getDialogPane().setContent(pane);
+		ObservableList<ExtendedFile> list = FXCollections
+				.observableArrayList(files.stream()
+						.map(f -> new ExtendedFile(f, true, false))
+						.collect(Collectors.toList()));
+		TableColumn<ExtendedFile, String> col1 = new TableColumn<>("Open");
+		col1.setCellFactory(c -> new CheckBoxTableCell<ExtendedFile, String>(i -> list.get(i).isToOpen()));
+		col1.setEditable(true);
+		TableColumn<ExtendedFile, String> col2 = new TableColumn<>("Lock");
+		col2.setCellFactory(c -> new CheckBoxTableCell<ExtendedFile, String>(i -> list.get(i).isToLock()));
+		col2.setEditable(true);
+		TableColumn<ExtendedFile, String> col3 = new TableColumn<>("File");
+		col3.setCellValueFactory(f -> new SimpleStringProperty(f.getValue().file.getName()));
+		TableView<ExtendedFile> table = new TableView<>();
+		table.setEditable(true);
+		table.setSelectionModel(null);
+		table.getColumns().addAll(col1, col2, col3);
+		table.setItems(list);
+		this.getDialogPane().setContent(table);
+		this.setTitle("File Selector");
+		this.setHeaderText("Choose which files you wish to load or lock");
 		this.getDialogPane().getButtonTypes().add(ButtonType.OK);
-		this.setResultConverter(type -> locked);
+		this.setResultConverter(type -> {
+			if(type == ButtonType.OK) {
+				Map<File, Boolean> lockedMap = new HashMap<>();
+				list.stream().peek(System.out::println).filter(f -> f.isToOpen().getValue()).forEach(f -> lockedMap.put(f.getFile(), f.isToLock().getValue()));
+				return lockedMap;
+			}
+			return null;
+		});
 	}
 	
-	private class FileListCell extends ListCell<File> {
-		private GridPane grid;
-		private Label fileName;
-		private CheckBox open;
-		private CheckBox lock;
+	private static class ExtendedFile {
+		private File file;
+		private SimpleBooleanProperty toOpen, toLock;
 		
-		public FileListCell() {
-			grid = new GridPane();
-			fileName = new Label();
-			open = new CheckBox();
-			Tooltip.install(open, openTip);
-			lock = new CheckBox();
-			Tooltip.install(lock, lockTip);
-			grid.add(open, 0, 0);
-			grid.add(new Label("   "), 1, 0);	//TODO this is Sin incarnate
-			grid.add(lock, 2, 0);
-			grid.add(new Label("  "), 3, 0);
-			grid.add(fileName, 4, 0);
+		protected ExtendedFile(File file, boolean toOpen, boolean toLock) {
+			super();
+			this.file = file;
+			this.toOpen = new SimpleBooleanProperty(toOpen);
+			this.toLock = new SimpleBooleanProperty(toLock);
 		}
-		
-		@Override
-		protected void updateItem(File item, boolean empty) {
-			super.updateItem(item, empty);
-			if (empty || item == null) {
-		         setText(null);
-		         setGraphic(null);
-		     } else {
-		         fileName.setText(item.getName());
-		         open.setSelected(true);
-		         open.setOnAction(event -> {
-		        	 if(open.isSelected())
-		        		 locked.put(item, lock.isSelected());
-		        	 else
-		        		 locked.remove(item);
-		         });
-		         lock.setSelected(false);
-		         lock.setOnAction(event -> {
-		        	 open.setSelected(true);
-		        	 locked.put(item, lock.isSelected());
-		         });
-		         setGraphic(grid);
-		     }
+		protected File getFile() {
+			return file;
 		}
-	}
+		protected SimpleBooleanProperty isToOpen() {
+			return toOpen;
+		}
+		protected SimpleBooleanProperty isToLock() {
+			return toLock;
+		}
 
+		@Override
+		public String toString() {
+			return "ExtendedFile [file=" + file + ", toOpen=" + toOpen + ", toLock=" + toLock + "]";
+		}
+		
+	}
+	
 }
