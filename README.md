@@ -11,7 +11,7 @@ This tool simplifies your work by providing an intuitive interface to work with.
 * Download MinecraftTranslationHelper on the [release page](https://github.com/Pyrofab/MinecraftTranslationHelper/releases). Preferably put it near your translations.
 * Run it and use the "Load a lang folder" button to navigate to the lang folder of the mod you're currently translating.
 * After selecting a lang folder, a popup will appear. You can just press 'OK' if you want to edit all the existing translation files or you can deselect files you do not want to see and lock files you do not want to edit.
-![popup screenshot](https://image.prntscr.com/image/Sle1DGqQT5KEcPPQ8KEi6A.png)
+<img src="https://image.prntscr.com/image/Sle1DGqQT5KEcPPQ8KEi6A.png" alt="popup screenshot" height="225" width="125"/>
 * The tool wil then load all selected translations side by side with the key on the left side. You can then edit any field and the program will do the rest.
 * Yes you can drag and drop columns or sort them differently.
 * Do you want to delete or change a translation key ? Right click in the table to open the context menu.
