@@ -17,26 +17,26 @@ import ladysnake.translatorhelper.controller.ControllerFx;
 
 public class Data {
 
-	public static final String TRANSLATION_KEY = "translation key";
-	
+	public static final String TRANSLATION_KEY = "Translation key";
+
 	private static final Pattern TRANSLATION_PATTERN = Pattern.compile("(.*?)=(.*)");
+	public static final String EN_US = "en_us.lang";
 
 	private Map<String, Boolean> editedFiles;
+	private Map<String, Boolean> lockedFiles;
 	private ObservableList<Map<String, String>> translationList;
 
 	public Data() {
 		editedFiles = new HashMap<>();
 		translationList = FXCollections.observableArrayList();
-		new TranslateAPI();
 	}
-	
-	public void load(File[] langFiles) {
-		if(langFiles == null || langFiles.length == 0)
-			return;
-		
+
+	public ObservableList<Map<String, String>> load(Map<File, Boolean> langFiles) {
+		this.lockedFiles = new HashMap<>();
 		Map<String, Map<String, String>> translations = new TreeMap<>();
-		
-		for(File file : langFiles) {
+
+		for(File file : langFiles.keySet()) {
+			this.lockedFiles.put(file.getName(), langFiles.get(file));
 			editedFiles.put(file.getName(), false);
 			try (BufferedReader reader = Files.newBufferedReader(file.toPath())) {
 				while(reader.ready()) {
@@ -45,10 +45,8 @@ public class Data {
 					if(m.matches()) {
 						String key = m.group(1);
 						Map<String, String> values = translations.get(key);
-						if(values == null) {
-							values = new HashMap<>();
-							translations.put(m.group(1), values);
-						}
+						if(values == null)
+							translations.put(m.group(1), values = new HashMap<>());
 						values.put(file.getName(), m.group(2));
 					}
 				}
@@ -56,13 +54,15 @@ public class Data {
 				e.printStackTrace();
 			}
 		}
-		
+
 		this.translationList = generateDataInMap(translations);
+
+		return this.translationList;
 	}
-	
+
 	public void save(File folder) {
 		editedFiles.forEach((file, edited) -> {
-			if(edited) {
+			if(edited && !isLocked(file)) {
 				try (BufferedWriter writer = Files.newBufferedWriter(new File(folder, file).toPath())) {
 					for(Map<String, String> pairs : translationList) {
 						if(pairs.get(file) != null) {
@@ -77,66 +77,66 @@ public class Data {
 			}
 		});
 	}
-	
+
 	public boolean isUnsaved() {
-		return editedFiles.keySet().stream().anyMatch(editedFiles::get);
+		return editedFiles.keySet().stream()
+				.peek(f -> System.out.println(f + (editedFiles.get(f) ? " has" : " doesn't have") + " unsaved modifications"))
+				.filter(f -> !isLocked(f))
+				.anyMatch(editedFiles::get);
 	}
-	
-	public boolean isUnsaved(String lang) {
-		return editedFiles.get(lang);
-	}
-	
+
 	public void setUnsaved() {
-		editedFiles.replaceAll((s, b) -> true); 
+		editedFiles.replaceAll((s, b) -> isLocked(s) ? false : true);
 	}
-	
+
+	public boolean isLocked(String lang) {
+		return lang == TRANSLATION_KEY ? true : lockedFiles.getOrDefault(lang, false);
+	}
+
 	private ObservableList<Map<String, String>> generateDataInMap(Map<String, Map<String, String>> translations) {
         ObservableList<Map<String, String>> allData = FXCollections.observableArrayList();
         translations.forEach((translatKey, values) -> {
         	Map<String, String> dataRow = new HashMap<>();
 
         	dataRow.put(TRANSLATION_KEY, translatKey);
-        	values.forEach((translatFile, translatValue) -> {
-       			dataRow.put(translatFile, translatValue);
-        	});
-        	
+        	values.forEach(dataRow::put);
+
         	allData.add(dataRow);
         });
         return allData;
     }
-	
-	public ObservableList<Map<String, String>> getTranslationList() {
-		return this.translationList;
-	}
-	
-	public void updateTranslationKey(String oldKey, String newKey, int selectedRow) {
+
+	public void updateTranslationKey(String newKey, int selectedRow) {
 		translationList.get(selectedRow).put(TRANSLATION_KEY, newKey);
 		translationList.get(selectedRow).keySet().stream().filter(s -> !s.equals(TRANSLATION_KEY)).forEach(l -> editedFiles.put(l, true));
 	}
-	
+
 	public void updateTranslation(int selectedRow, String newValue, String lang) {
 		System.out.println(selectedRow + " " + newValue + " " + lang);
 		editedFiles.put(lang, true);
 		translationList.get(selectedRow).put(lang, newValue);
 	}
-	
+
 	public void removeTranslation(int selectedRow) {
 		translationList.remove(selectedRow).keySet().stream().filter(s -> !s.equals(TRANSLATION_KEY)).forEach((lang) -> editedFiles.put(lang, true));
 	}
-	
+
 	public void addTranslation(String key) {
 		Map<String, String> newMap = new HashMap<>();
 		newMap.put(Data.TRANSLATION_KEY, key);
 		translationList.add(newMap);
 		translationList.sort((o1, o2) -> o1.get(TRANSLATION_KEY).compareTo(o2.get(TRANSLATION_KEY)));
 	}
-	
-	public void generateTranslation(String lang, int selectedRow) {
+
+	public String generateTranslation(String lang, int selectedRow) throws IOException {
 		Matcher m1 = ControllerFx.LANG_PATTERN.matcher(lang);
 		if(!m1.matches())
-			return;
-		String badTransl = TranslateAPI.translate(translationList.get(selectedRow).get("en_us.lang"), m1.group(1));
-		updateTranslation(selectedRow, badTransl, lang);
+			throw new IllegalArgumentException("The provided String must be a proper lang file");
+
+		String badTransl = TranslateAPI.translate(translationList.get(selectedRow).containsKey(EN_US)
+				? translationList.get(selectedRow).get(EN_US)
+				: translationList.get(selectedRow).getOrDefault("en_US.lang", ""), m1.group(1));
+		return badTransl;
 	}
-	
+
 }
