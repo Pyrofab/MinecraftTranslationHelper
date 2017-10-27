@@ -11,15 +11,7 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Label;
-import javafx.scene.control.MenuButton;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.Tooltip;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.MapValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.BorderPane;
@@ -46,18 +38,19 @@ public class TranslationHelper extends Application {
 	private MenuButton newThing;
 
 	private static Callback<TableColumn<Map<String, String>, String>, TableCell<Map<String, String>, String>>
-	    cellFactoryForMap = p -> new TextFieldTableCell<Map<String, String>, String>(new StringConverter<String>() {
-	        @Override
-	        public String toString(String t) {
-	        	if(t == null)
-	        		return "";
-	            return t.toString();
-	        }
-	        @Override
-	        public String fromString(String string) {
-	            return string;
-	        }
-	    });
+	    cellFactoryForMap = p -> new TextFieldTableCell<>(new StringConverter<String>() {
+		@Override
+		public String toString(String t) {
+			if (t == null)
+				return "";
+			return t;
+		}
+
+		@Override
+		public String fromString(String string) {
+			return string;
+		}
+	});
 
 	@Override
 	public void start(Stage primaryStage) {
@@ -135,8 +128,10 @@ public class TranslationHelper extends Application {
 	}
 
 	public void generateTable(ObservableList<Map<String, String>> allTranslations, List<String> langNames, Predicate<String> isLocked) {
-		trTable = new TableView<Map<String, String>>(allTranslations);
+		trTable = new TableView<>(allTranslations);
 		trTable.setEditable(true);
+		trTable.getSelectionModel().setCellSelectionEnabled(true);
+		trTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 		trTable.setContextMenu(contextMenuTable);
 		trTable.setOnSort(control::onSort);
 		saveBtn.setDisable(false);
@@ -152,7 +147,6 @@ public class TranslationHelper extends Application {
         borderPane.setCenter(trTable);
 	}
 
-	@SuppressWarnings("rawtypes")
 	public void addColumn(String lang, boolean locked) {
         TableColumn<Map<String, String>, String> langColumn = new TableColumn<>(lang);
         langColumn.setPrefWidth(300);
