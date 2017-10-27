@@ -2,27 +2,22 @@ package ladysnake.translatorhelper.controller;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.text.NumberFormat;
+import java.text.ParseException;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.StringProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
-import javafx.scene.control.Alert;
+import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.SortEvent;
 import javafx.scene.control.TableColumn.CellEditEvent;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextInputDialog;
-import javafx.scene.input.KeyCodeCombination;
-import javafx.scene.input.KeyEvent;
+import javafx.scene.input.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.WindowEvent;
 import ladysnake.translatorhelper.application.SelectFilesDialog;
@@ -58,7 +53,7 @@ public class ControllerFx {
 	            Map<File, Boolean> lockedFiles = new SelectFilesDialog(
 	            		Arrays.asList(langFolder.listFiles(f -> f.isFile() && LANG_PATTERN.matcher(f.getName()).matches()))).showAndWait().get();
 	            List<String> langNames = new ArrayList<>(lockedFiles.keySet().stream()
-	            		.map(f -> f.getName())
+	            		.map(File::getName)
 	            		.sorted((s1, s2) -> s1.equalsIgnoreCase(Data.EN_US) ? -1 : s2.equalsIgnoreCase(Data.EN_US) ? 1 : s1.compareTo(s2))
 	            		.collect(Collectors.toList()));
 	            langNames.add(0, Data.TRANSLATION_KEY);
@@ -97,6 +92,20 @@ public class ControllerFx {
 	public void onKeyPressed(KeyEvent event) {
 		if(KeyCodeCombination.keyCombination("Ctrl+S").match(event))
 			data.save(langFolder);
+		else if(KeyCodeCombination.keyCombination("Ctrl+C").match(event)) {
+			ClipboardContent content = new ClipboardContent();
+			TablePosition tablePosition = view.getTable().getFocusModel().getFocusedCell();
+			String contentString = view.getTable().getItems().get(tablePosition.getRow()).get(tablePosition.getTableColumn().getText());
+			System.out.println("copying " + contentString);
+			content.putString(contentString);
+			content.putHtml("<td>" + contentString + "</td>");
+			Clipboard.getSystemClipboard().setContent(content);
+		} else if(KeyCodeCombination.keyCombination("Ctrl+V").match(event)) {
+			List<TablePosition> tablePositions = view.getTable().getSelectionModel().getSelectedCells();
+			for(TablePosition tablePosition : tablePositions)
+				view.getTable().getItems().get(tablePosition.getRow()).put(tablePosition.getTableColumn().getText(), Clipboard.getSystemClipboard().getString());
+			view.getTable().refresh();
+		}
 	}
 
 	/**
