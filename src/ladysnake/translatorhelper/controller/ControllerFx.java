@@ -1,21 +1,12 @@
 package ladysnake.translatorhelper.controller;
 
-import java.io.File;
-import java.io.IOException;
-import java.text.NumberFormat;
-import java.text.ParseException;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import javafx.beans.property.IntegerProperty;
-import javafx.beans.property.StringProperty;
-import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.TableColumn.CellEditEvent;
 import javafx.scene.input.*;
 import javafx.stage.DirectoryChooser;
@@ -24,6 +15,15 @@ import ladysnake.translatorhelper.application.FindReplaceDialog;
 import ladysnake.translatorhelper.application.SelectFilesDialog;
 import ladysnake.translatorhelper.application.TranslationHelper;
 import ladysnake.translatorhelper.model.Data;
+
+import java.awt.*;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class ControllerFx {
 
@@ -91,6 +91,7 @@ public class ControllerFx {
 	 * Handles key combinations
 	 */
 	public void onKeyPressed(KeyEvent event) {
+		if(view.getTable() == null) return;
 		if(KeyCodeCombination.keyCombination("Ctrl+S").match(event))
 			data.save(langFolder);
 		else if(KeyCodeCombination.keyCombination("Ctrl+C").match(event)) {
@@ -107,12 +108,20 @@ public class ControllerFx {
 				view.getTable().getItems().get(tablePosition.getRow()).put(tablePosition.getTableColumn().getText(), Clipboard.getSystemClipboard().getString());
 			view.getTable().refresh();
 		} else if(KeyCodeCombination.keyCombination("Ctrl+R").match(event)) {
-			Dialog<FindReplaceDialog.FindReplaceParameters> findReplaceDialog;
-			findReplaceDialog =	new FindReplaceDialog(view.getTable().getColumns().stream()
+			FindReplaceDialog findReplaceDialog;
+			ObservableList<String> availableLanguages = FXCollections.observableList(view.getTable().getColumns().stream()
 					.map(TableColumnBase::getText)
 					.skip(1).collect(Collectors.toList()));
+			TableView.TableViewFocusModel focusModel = view.getTable().getFocusModel();
+			findReplaceDialog = new FindReplaceDialog(availableLanguages);
+			findReplaceDialog.setRegex((String) ((Map)focusModel.getFocusedItem()).get("en_us.lang"));
+			if(focusModel.getFocusedCell().getTableColumn() != null) {
+				String selectedLang = focusModel.getFocusedCell().getTableColumn().getText();
+				findReplaceDialog.setToLang(selectedLang);
+				findReplaceDialog.setReplace((String) ((Map) focusModel.getFocusedItem()).get(selectedLang));
+			}
 			findReplaceDialog.showAndWait().ifPresent(params ->
-					data.searchReplace(params.fromLang, params.toLang, params.regex, params.replace));
+					data.searchReplace(params.fromLang, params.toLang, params.regex, params.replace, params.replaceExistingTranslations));
 			view.getTable().refresh();
 		} else if(KeyCodeCombination.keyCombination("Ctrl+Z").match(event)) {
 			data.undo();
@@ -125,6 +134,27 @@ public class ControllerFx {
 				data.removeTranslation(tablePosition.getRow(), tablePosition.getTableColumn().getText());
 				view.getTable().refresh();
 			}
+		} else if(event.getCode().isLetterKey()) //noinspection unchecked
+			view.getTable().edit(view.getTable().getFocusModel().getFocusedCell().getRow(),
+				view.getTable().getFocusModel().getFocusedCell().getTableColumn());
+	}
+
+	@SuppressWarnings("unchecked")
+	private void tryUseVimControls(KeyCode key) {
+		if(view.getTable().editingCellProperty().isNotNull().get()) return;
+		try {
+			Robot r = new Robot();
+			switch (key) {
+				case H : r.keyPress(java.awt.event.KeyEvent.VK_LEFT); break;
+				case J : r.keyPress(java.awt.event.KeyEvent.VK_DOWN); break;
+				case K : r.keyPress(java.awt.event.KeyEvent.VK_UP); break;
+				case L : r.keyPress(java.awt.event.KeyEvent.VK_RIGHT); break;
+				case I : TablePosition pos = view.getTable().getFocusModel().getFocusedCell();
+					view.getTable().edit(pos.getRow(), pos.getTableColumn());
+					break;
+			}
+		} catch (AWTException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -183,8 +213,14 @@ public class ControllerFx {
 	/**
 	 * Handles changes made through the table
 	 */
+	@SuppressWarnings("unchecked")
 	public void onEditCommit(CellEditEvent<Map<String, String>, String> event) {
 		data.updateTranslation(event.getTablePosition().getRow(), event.getNewValue(), event.getTableColumn().getText());
+		TableView.TableViewFocusModel<Map<String, String>> focusModel = view.getTable().getFocusModel();
+		//noinspection unchecked
+		focusModel.focus(focusModel.getFocusedCell().getRow()+1, focusModel.getFocusedCell().getTableColumn());
+		view.getTable().getSelectionModel().clearAndSelect(focusModel.getFocusedCell().getRow(), focusModel.getFocusedCell().getTableColumn());
+		view.getTable().requestFocus();
 	}
 
 	/**

@@ -1,11 +1,5 @@
 package ladysnake.translatorhelper.application;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.function.Predicate;
-
 import javafx.application.Application;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -20,6 +14,12 @@ import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
 import ladysnake.translatorhelper.controller.ControllerFx;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Predicate;
 
 
 public class TranslationHelper extends Application {
@@ -145,12 +145,15 @@ public class TranslationHelper extends Application {
         }
 
         borderPane.setCenter(trTable);
+        trTable.requestFocus();
+        trTable.getSelectionModel().select(0);
 	}
 
 	public void addColumn(String lang, boolean locked) {
         TableColumn<Map<String, String>, String> langColumn = new TableColumn<>(lang);
         langColumn.setPrefWidth(300);
-        langColumn.setCellValueFactory(new MapValueFactory(lang));
+		//noinspection unchecked
+		langColumn.setCellValueFactory(new MapValueFactory(lang));
         langColumn.setCellFactory(cellFactoryForMap);
         langColumn.setEditable(!locked);
        	langColumn.setOnEditCommit(control::onEditCommit);

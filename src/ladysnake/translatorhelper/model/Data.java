@@ -87,7 +87,7 @@ public class Data {
 	}
 
 	public void setUnsaved() {
-		editedFiles.replaceAll((s, b) -> isLocked(s) ? false : true);
+		editedFiles.replaceAll((s, b) -> !isLocked(s));
 	}
 
 	public boolean isLocked(String lang) {
@@ -159,16 +159,15 @@ public class Data {
 		if(!m1.matches())
 			throw new IllegalArgumentException("The provided String must be a proper lang file");
 
-		String badTransl = TranslateAPI.translate(translationList.get(selectedRow).containsKey(EN_US)
+		return TranslateAPI.translate(translationList.get(selectedRow).containsKey(EN_US)
 				? translationList.get(selectedRow).get(EN_US)
 				: translationList.get(selectedRow).getOrDefault("en_US.lang", ""), m1.group(1));
-		return badTransl;
 	}
 
-	public void searchReplace(String fromLang, String toLang, Pattern regex, String replacePattern) {
+	public void searchReplace(String fromLang, String toLang, Pattern regex, String replacePattern, boolean replaceExistingTranslations) {
 		for (int i = 0; i < translationList.size(); i++) {
 			Map<String, String> translationRow = translationList.get(i);
-			if(!translationRow.containsKey(fromLang)) continue;
+			if(!translationRow.containsKey(fromLang) || (translationRow.containsKey(toLang) && !replaceExistingTranslations)) continue;
 			Matcher matcher = regex.matcher(translationRow.get(fromLang));
 			if (matcher.matches()) {
 				String replace = replacePattern;
