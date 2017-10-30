@@ -20,6 +20,7 @@ import javafx.scene.control.TableColumn.CellEditEvent;
 import javafx.scene.input.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.WindowEvent;
+import ladysnake.translatorhelper.application.FindReplaceDialog;
 import ladysnake.translatorhelper.application.SelectFilesDialog;
 import ladysnake.translatorhelper.application.TranslationHelper;
 import ladysnake.translatorhelper.model.Data;
@@ -93,8 +94,8 @@ public class ControllerFx {
 		if(KeyCodeCombination.keyCombination("Ctrl+S").match(event))
 			data.save(langFolder);
 		else if(KeyCodeCombination.keyCombination("Ctrl+C").match(event)) {
-			ClipboardContent content = new ClipboardContent();
 			TablePosition tablePosition = view.getTable().getFocusModel().getFocusedCell();
+			ClipboardContent content = new ClipboardContent();
 			String contentString = view.getTable().getItems().get(tablePosition.getRow()).get(tablePosition.getTableColumn().getText());
 			System.out.println("copying " + contentString);
 			content.putString(contentString);
@@ -105,6 +106,25 @@ public class ControllerFx {
 			for(TablePosition tablePosition : tablePositions)
 				view.getTable().getItems().get(tablePosition.getRow()).put(tablePosition.getTableColumn().getText(), Clipboard.getSystemClipboard().getString());
 			view.getTable().refresh();
+		} else if(KeyCodeCombination.keyCombination("Ctrl+R").match(event)) {
+			Dialog<FindReplaceDialog.FindReplaceParameters> findReplaceDialog;
+			findReplaceDialog =	new FindReplaceDialog(view.getTable().getColumns().stream()
+					.map(TableColumnBase::getText)
+					.skip(1).collect(Collectors.toList()));
+			findReplaceDialog.showAndWait().ifPresent(params ->
+					data.searchReplace(params.fromLang, params.toLang, params.regex, params.replace));
+			view.getTable().refresh();
+		} else if(KeyCodeCombination.keyCombination("Ctrl+Z").match(event)) {
+			data.undo();
+			view.getTable().refresh();
+		} else if(KeyCodeCombination.keyCombination("Ctrl+Shift+Z").match(event) || KeyCodeCombination.keyCombination("Ctrl+Y").match(event)) {
+			data.redo();
+			view.getTable().refresh();
+		} else if(event.getCode().equals(KeyCode.DELETE)) {
+			for(TablePosition tablePosition : view.getTable().getSelectionModel().getSelectedCells()) {
+				data.removeTranslation(tablePosition.getRow(), tablePosition.getTableColumn().getText());
+				view.getTable().refresh();
+			}
 		}
 	}
 

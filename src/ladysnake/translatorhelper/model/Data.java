@@ -1,19 +1,17 @@
 package ladysnake.translatorhelper.model;
 
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import ladysnake.translatorhelper.controller.ControllerFx;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import ladysnake.translatorhelper.controller.ControllerFx;
 
 public class Data {
 
@@ -25,6 +23,9 @@ public class Data {
 	private Map<String, Boolean> editedFiles;
 	private Map<String, Boolean> lockedFiles;
 	private ObservableList<Map<String, String>> translationList;
+	private Deque<Runnable> undoOperations = new LinkedList<>();
+	private Deque<Runnable> redoOperations = new LinkedList<>();
+	private boolean isUndoing;
 
 	public Data() {
 		editedFiles = new HashMap<>();
@@ -90,7 +91,7 @@ public class Data {
 	}
 
 	public boolean isLocked(String lang) {
-		return lang == TRANSLATION_KEY ? true : lockedFiles.getOrDefault(lang, false);
+		return Objects.equals(lang, TRANSLATION_KEY) ? true : lockedFiles.getOrDefault(lang, false);
 	}
 
 	private ObservableList<Map<String, String>> generateDataInMap(Map<String, Map<String, String>> translations) {
@@ -107,25 +108,50 @@ public class Data {
     }
 
 	public void updateTranslationKey(String newKey, int selectedRow) {
-		translationList.get(selectedRow).put(TRANSLATION_KEY, newKey);
-		translationList.get(selectedRow).keySet().stream().filter(s -> !s.equals(TRANSLATION_KEY)).forEach(l -> editedFiles.put(l, true));
+		String old = translationList.get(selectedRow).put(TRANSLATION_KEY, newKey);
+		addUndoOperation(() -> updateTranslationKey(old, selectedRow));
+		translationList.get(selectedRow).keySet().stream().filter(s -> !isLocked(s)).forEach(l -> editedFiles.put(l, true));
 	}
 
-	public void updateTranslation(int selectedRow, String newValue, String lang) {
+	public void updateTranslation(final int selectedRow, String newValue, final String lang) {
 		System.out.println(selectedRow + " " + newValue + " " + lang);
+		if(isLocked(lang)) return;
+		final String oldValue = translationList.get(selectedRow).put(lang, newValue);
+		addUndoOperation(() -> updateTranslation(selectedRow, oldValue == null ? "" : oldValue, lang));
 		editedFiles.put(lang, true);
-		translationList.get(selectedRow).put(lang, newValue);
+	}
+
+	private void removeTranslation(String key) {
+		for(int i = 0; i < translationList.size(); i++)
+			if(translationList.get(i).get(TRANSLATION_KEY).equals(key)) {
+				removeTranslation(i);
+				break;
+			}
 	}
 
 	public void removeTranslation(int selectedRow) {
-		translationList.remove(selectedRow).keySet().stream().filter(s -> !s.equals(TRANSLATION_KEY)).forEach((lang) -> editedFiles.put(lang, true));
+		Map<String, String> translations = translationList.remove(selectedRow);
+		translations.keySet().stream().filter(s -> !s.equals(TRANSLATION_KEY)).forEach((lang) -> editedFiles.put(lang, true));
+		addUndoOperation(() -> addTranslation(translations.get(TRANSLATION_KEY), translations));
+	}
+
+	public void removeTranslation(int selectedRow, String lang) {
+		if(isLocked(lang)) return;
+		String old = translationList.get(selectedRow).remove(lang);
+		addUndoOperation(() -> updateTranslation(selectedRow, old, lang));
+		editedFiles.put(lang, true);
 	}
 
 	public void addTranslation(String key) {
 		Map<String, String> newMap = new HashMap<>();
 		newMap.put(Data.TRANSLATION_KEY, key);
+		addTranslation(key, newMap);
+	}
+
+	private void addTranslation(String key, Map<String, String> newMap) {
 		translationList.add(newMap);
-		translationList.sort((o1, o2) -> o1.get(TRANSLATION_KEY).compareTo(o2.get(TRANSLATION_KEY)));
+		translationList.sort(Comparator.comparing(o -> o.get(TRANSLATION_KEY)));
+		addUndoOperation(() -> removeTranslation(key));
 	}
 
 	public String generateTranslation(String lang, int selectedRow) throws IOException {
@@ -137,6 +163,42 @@ public class Data {
 				? translationList.get(selectedRow).get(EN_US)
 				: translationList.get(selectedRow).getOrDefault("en_US.lang", ""), m1.group(1));
 		return badTransl;
+	}
+
+	public void searchReplace(String fromLang, String toLang, Pattern regex, String replacePattern) {
+		for (int i = 0; i < translationList.size(); i++) {
+			Map<String, String> translationRow = translationList.get(i);
+			if(!translationRow.containsKey(fromLang)) continue;
+			Matcher matcher = regex.matcher(translationRow.get(fromLang));
+			if (matcher.matches()) {
+				String replace = replacePattern;
+				for (int j = 0; j <= matcher.groupCount(); j++)
+					replace = replace.replace("$" + j, matcher.group(j));
+				this.updateTranslation(i, replace, toLang);
+			}
+		}
+	}
+	
+	private void addUndoOperation(Runnable operation) {
+		if(isUndoing)
+			redoOperations.push(operation);
+		else
+			undoOperations.push(operation);
+	}
+
+	public void undo() {
+		if(this.undoOperations.isEmpty()) return;
+		try {
+			isUndoing = true;
+			this.undoOperations.pop().run();
+		} finally {
+			isUndoing = false;
+		}
+	}
+
+	public void redo() {
+		if(!this.redoOperations.isEmpty())
+			this.redoOperations.pop().run();
 	}
 
 }
