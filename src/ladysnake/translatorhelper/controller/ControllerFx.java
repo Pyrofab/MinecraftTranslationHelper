@@ -105,13 +105,13 @@ public class ControllerFx {
 		} else if(KeyCodeCombination.keyCombination("Ctrl+V").match(event)) {
 			List<TablePosition> tablePositions = view.getTable().getSelectionModel().getSelectedCells();
 			for(TablePosition tablePosition : tablePositions)
-				view.getTable().getItems().get(tablePosition.getRow()).put(tablePosition.getTableColumn().getText(), Clipboard.getSystemClipboard().getString());
+				data.updateTranslation(tablePosition.getRow(), Clipboard.getSystemClipboard().getString(), tablePosition.getTableColumn().getText());
 			view.getTable().refresh();
 		} else if(KeyCodeCombination.keyCombination("Ctrl+R").match(event)) {
 			FindReplaceDialog findReplaceDialog;
 			ObservableList<String> availableLanguages = FXCollections.observableList(view.getTable().getColumns().stream()
 					.map(TableColumnBase::getText)
-					.skip(1).collect(Collectors.toList()));
+					.filter(s -> !s.equals(Data.TRANSLATION_KEY)).collect(Collectors.toList()));
 			TableView.TableViewFocusModel focusModel = view.getTable().getFocusModel();
 			findReplaceDialog = new FindReplaceDialog(availableLanguages);
 			findReplaceDialog.setRegex((String) ((Map)focusModel.getFocusedItem()).get("en_us.lang"));
