@@ -142,10 +142,11 @@ public class Data {
 		editedFiles.put(lang, true);
 	}
 
-	public void addTranslation(String key) {
+	public Map<String, String> addTranslation(String key) {
 		Map<String, String> newMap = new HashMap<>();
 		newMap.put(Data.TRANSLATION_KEY, key);
 		addTranslation(key, newMap);
+		return newMap;
 	}
 
 	private void addTranslation(String key, Map<String, String> newMap) {

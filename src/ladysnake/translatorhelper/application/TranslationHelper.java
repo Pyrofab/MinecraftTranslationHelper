@@ -32,6 +32,7 @@ public class TranslationHelper extends Application {
 	private ContextMenu contextMenuTable;
 	private TableView<Map<String, String>> trTable;
 	private Label statusLabel;
+	private CheckBox smartSearch;
 
 	private Button wimpTrnslBtn;
 	private Button saveBtn;
@@ -75,9 +76,12 @@ public class TranslationHelper extends Application {
 			scene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 
 			{	// load button
+				smartSearch = new CheckBox("Use smart search");
+				Tooltip.install(smartSearch, new Tooltip("Uses recursive search to find the most likely lang folder from a selected root."));
+				grid.add(smartSearch, 0, 0, 1, 1);
 		        Button loadBtn = new Button("Load a lang folder");
 		        loadBtn.setOnAction(control::onChooseFolder);
-		        grid.add(loadBtn, 0, 0, 2, 1);
+		        grid.add(loadBtn, 1, 0, 1, 1);
 	        }
 
 			{	// save button
@@ -102,6 +106,7 @@ public class TranslationHelper extends Application {
 				newRow.setOnAction(control::onInsertRow);
 				newThing = new MenuButton("Add...", null, newLang, newRow);
 				newThing.setDisable(true);
+				newThing.setOnKeyPressed(control::onKeyPressed);
 				grid.add(newThing, 4, 0);
 			}
 
@@ -158,6 +163,15 @@ public class TranslationHelper extends Application {
         langColumn.setEditable(!locked);
        	langColumn.setOnEditCommit(control::onEditCommit);
         trTable.getColumns().add(langColumn);
+	}
+
+	public void showMenuNew() {
+		this.newThing.show();
+		this.newThing.requestFocus();
+	}
+
+	public boolean isSmartSearchEnabled() {
+		return smartSearch.isSelected();
 	}
 
 	public void setStatus(String status) {

@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("unused")
 public class ControllerFx {
 
 	private TranslationHelper view;
@@ -49,10 +50,17 @@ public class ControllerFx {
 	public void onChooseFolder(ActionEvent event) {
 		langFolder = fileChooser.showDialog(view.getStage());
         if (langFolder != null) {
+        	if(view.isSmartSearchEnabled()) {
+        		view.setStatus("Starting smart search from selected folder");
+        		langFolder = findLangFolder(langFolder);
+			}
     		view.setStatus("loading lang files");
     		try {
+    			File[] langFiles = langFolder.listFiles(f -> f.isFile() && LANG_PATTERN.matcher(f.getName()).matches());
+    			if(langFiles == null)
+    				throw new IOException();
 	            Map<File, Boolean> lockedFiles = new SelectFilesDialog(
-	            		Arrays.asList(langFolder.listFiles(f -> f.isFile() && LANG_PATTERN.matcher(f.getName()).matches()))).showAndWait().get();
+	            		Arrays.asList(langFiles)).showAndWait().orElseThrow(NoSuchElementException::new);
 	            List<String> langNames = new ArrayList<>(lockedFiles.keySet().stream()
 	            		.map(File::getName)
 	            		.sorted((s1, s2) -> s1.equalsIgnoreCase(Data.EN_US) ? -1 : s2.equalsIgnoreCase(Data.EN_US) ? 1 : s1.compareTo(s2))
@@ -64,9 +72,33 @@ public class ControllerFx {
     		} catch (NoSuchElementException e) {
     			System.err.println("Operation cancelled : " + e.getLocalizedMessage());
     			view.setStatus("no lang folder selected");
-    		}
-        }
+    		} catch (IOException e) {
+				System.err.println("The file selected isn't a valid folder");
+				view.setStatus("erred while reading the folder");
+			}
+		}
     }
+
+    private File findLangFolder(File rootFolder) {
+		File[] subFiles = rootFolder.listFiles();
+		if(subFiles == null || subFiles.length == 0)
+			return rootFolder;
+		return Arrays.stream(subFiles).filter(File::isDirectory).map(this::findLangFolder).max((f1, f2) -> {
+			File[] langFiles1 = f1.listFiles(f -> f.isFile() && LANG_PATTERN.matcher(f.getName()).matches());
+			File[] langFiles2 = f2.listFiles(f -> f.isFile() && LANG_PATTERN.matcher(f.getName()).matches());
+			if(langFiles1 == null) return langFiles2 == null ? 0 : -1;
+			if(langFiles2 == null) return 1;
+			if(langFiles1.length > 0) {
+				if(langFiles2.length > 0) return Integer.compare(langFiles1.length, langFiles2.length);
+				return 1;
+			} else if(langFiles2.length > 0) return -1;
+			if(f1.getName().equals("lang")) return f2.getName().equals("lang") ? 0 : 1;
+			if(f2.getName().equals("lang")) return -1;
+			File[] subDirs = f1.listFiles(File::isDirectory);
+			File[] subDirs1 = f2.listFiles(File::isDirectory);
+			return Integer.compare(subDirs1 == null ? 0 : subDirs1.length, subDirs == null ? 0 : subDirs.length);
+		}).orElse(rootFolder);
+	}
 
 	/**
 	 * Handles the "Save" button
@@ -129,6 +161,10 @@ public class ControllerFx {
 		} else if(KeyCodeCombination.keyCombination("Ctrl+Shift+Z").match(event) || KeyCodeCombination.keyCombination("Ctrl+Y").match(event)) {
 			data.redo();
 			view.getTable().refresh();
+		} else if(KeyCodeCombination.keyCombination("Ctrl+N").match(event)) {
+			view.showMenuNew();
+		} else if(event.getCode().equals(KeyCode.ESCAPE)) {
+			view.getTable().requestFocus();
 		} else if(event.getCode().equals(KeyCode.DELETE)) {
 			for(TablePosition tablePosition : view.getTable().getSelectionModel().getSelectedCells()) {
 				data.removeTranslation(tablePosition.getRow(), tablePosition.getTableColumn().getText());
@@ -137,25 +173,6 @@ public class ControllerFx {
 		} else if(event.getCode().isLetterKey()) //noinspection unchecked
 			view.getTable().edit(view.getTable().getFocusModel().getFocusedCell().getRow(),
 				view.getTable().getFocusModel().getFocusedCell().getTableColumn());
-	}
-
-	@SuppressWarnings("unchecked")
-	private void tryUseVimControls(KeyCode key) {
-		if(view.getTable().editingCellProperty().isNotNull().get()) return;
-		try {
-			Robot r = new Robot();
-			switch (key) {
-				case H : r.keyPress(java.awt.event.KeyEvent.VK_LEFT); break;
-				case J : r.keyPress(java.awt.event.KeyEvent.VK_DOWN); break;
-				case K : r.keyPress(java.awt.event.KeyEvent.VK_UP); break;
-				case L : r.keyPress(java.awt.event.KeyEvent.VK_RIGHT); break;
-				case I : TablePosition pos = view.getTable().getFocusModel().getFocusedCell();
-					view.getTable().edit(pos.getRow(), pos.getTableColumn());
-					break;
-			}
-		} catch (AWTException e) {
-			e.printStackTrace();
-		}
 	}
 
 	/**
@@ -255,8 +272,10 @@ public class ControllerFx {
 		d.setGraphic(null);
 		d.setHeaderText("Enter the new translation's key:");
 		d.setTitle("New translation");
-		d.showAndWait().ifPresent(data::addTranslation);
+		view.getTable().getSelectionModel().clearSelection();
+		d.showAndWait().ifPresent(key -> view.getTable().getSelectionModel().select(data.addTranslation(key)));
 		view.getTable().sort();
+		view.getTable().requestFocus();
 	}
 
 	public void onNewFile(ActionEvent event) {
