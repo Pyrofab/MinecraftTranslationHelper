@@ -19,6 +19,8 @@ import ladysnake.translatorhelper.model.Data;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -52,7 +54,9 @@ public class ControllerFx {
         if (langFolder != null) {
         	if(view.isSmartSearchEnabled()) {
         		view.setStatus("Starting smart search from selected folder");
-        		langFolder = findLangFolder(langFolder);
+        		Instant i1 = Instant.now();
+        		System.out.println(langFolder = findLangFolder2(langFolder));
+        		System.out.println(Duration.between(i1, Instant.now()));
 			}
     		view.setStatus("loading lang files");
     		try {
@@ -83,13 +87,48 @@ public class ControllerFx {
 		File[] subFiles = rootFolder.listFiles();
 		if(subFiles == null || subFiles.length == 0)
 			return rootFolder;
-		return Arrays.stream(subFiles).filter(File::isDirectory).map(this::findLangFolder).max((f1, f2) -> {
+		return Arrays.stream(subFiles).parallel().filter(File::isDirectory).map(this::findLangFolder).max((f1, f2) -> {
+			File[] subFiles1 = f1.listFiles();
+			File[] subFiles2 = f2.listFiles();
+			if(subFiles1 == null) return subFiles2 == null ? 0 : -1;
+			if(subFiles2 == null) return 1;
+			int score1 = 0;
+			int score2 = 0;
+			long langFiles1 = Arrays.stream(subFiles1).filter(f -> f.isFile() && LANG_PATTERN.matcher(f.getName()).matches()).count();
+			long langFiles2 = Arrays.stream(subFiles2).filter(f -> f.isFile() && LANG_PATTERN.matcher(f.getName()).matches()).count();
+			if(langFiles1 > langFiles2)		// a lang folder has lang files in it
+				score1++;
+			else if(langFiles2 > langFiles1)
+				score2++;
+			if("lang".equals(f1.getName()))		// a lang folder is called "lang"
+				score1++;
+			if("lang".equals(f2.getName()))
+				score2++;
+			if(Arrays.stream(subFiles1).noneMatch(File::isDirectory))	// a lang folder doesn't have any subfolder
+				score1++;
+			if(Arrays.stream(subFiles2).noneMatch(File::isDirectory))
+				score2++;
+//			System.out.println(f1 + ": " + score1 + "\n" + f2 + ": " + score2);
+			return Integer.compare(score1, score2);
+		}).orElse(rootFolder);
+	}
+
+	private File findLangFolder2(File rootFolder) {
+		File[] subFiles = rootFolder.listFiles();
+		if(subFiles == null || subFiles.length == 0)
+			return rootFolder;
+		return Arrays.stream(subFiles).parallel().filter(File::isDirectory).map(this::findLangFolder).max((f1, f2) -> {
 			File[] langFiles1 = f1.listFiles(f -> f.isFile() && LANG_PATTERN.matcher(f.getName()).matches());
 			File[] langFiles2 = f2.listFiles(f -> f.isFile() && LANG_PATTERN.matcher(f.getName()).matches());
 			if(langFiles1 == null) return langFiles2 == null ? 0 : -1;
 			if(langFiles2 == null) return 1;
 			if(langFiles1.length > 0) {
-				if(langFiles2.length > 0) return Integer.compare(langFiles1.length, langFiles2.length);
+				if(langFiles2.length > 0) {
+					if (langFiles1.length != langFiles2.length)
+						return Integer.compare(langFiles1.length, langFiles2.length);
+					else
+						return Long.compare(f1.lastModified(), f2.lastModified());
+				}
 				return 1;
 			} else if(langFiles2.length > 0) return -1;
 			if(f1.getName().equals("lang")) return f2.getName().equals("lang") ? 0 : 1;

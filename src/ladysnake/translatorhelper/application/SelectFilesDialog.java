@@ -27,13 +27,13 @@ public class SelectFilesDialog extends Dialog<Map<File, Boolean>> {
 		table.setEditable(true);
 		{
 			TableColumn<ExtendedFile, String> col1 = new TableColumn<>("Open");
-			col1.setCellFactory(c -> new CheckBoxTableCell<ExtendedFile, String>(i -> list.get(i).isToOpen()));
+			col1.setCellFactory(c -> new CheckBoxTableCell<>(i -> list.get(i).isToOpen()));
 			col1.setEditable(true);
 			table.getColumns().add(col1);
 		}
 		{
 			TableColumn<ExtendedFile, String> col2 = new TableColumn<>("Lock");
-			col2.setCellFactory(c -> new CheckBoxTableCell<ExtendedFile, String>(i -> list.get(i).isToLock()));
+			col2.setCellFactory(c -> new CheckBoxTableCell<>(i -> list.get(i).isToLock()));
 			col2.setEditable(true);
 			table.getColumns().add(col2);
 		}
