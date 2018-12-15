@@ -3,7 +3,7 @@ A tool to aid in the creation of translation files
 
 Mod translations are annoying. You need to fiddle with text files and switch back and forth in your editors to make sure you get it right.
 And then the mod updates, new translations are added and you are lost among invalid translations and untranslated features.
-If you're a modder, you may also be afraid of changing translation keys as that may break existing translations.
+If you are a modder, you may also be afraid of changing translation keys as that may break existing translations.
 
 This tool simplifies your work by providing an intuitive interface to work with.
 
@@ -18,6 +18,6 @@ This tool simplifies your work by providing an intuitive interface to work with.
 * If you run out of inspiration, you can use the 'Joker' button. This will autocomplete the cell based on Google Translate's answer. If you use this feature, please double check the result and keep the wacky translations at a minimum.
 * When you are done, click the save button to apply the changes. This will only affect changed files.
 
-Note : this program doesn't care about comments and fancy line separators. Upon hitting save, all irrelevant information will be erased from any edited file.
+Note : this program does not care about comments and fancy line separators. Upon hitting save, all irrelevant information will be erased from any edited file.
 
 ![screenshot](https://image.prntscr.com/image/c4djsaUyTPGiuJvF4q9AWQ.png)
