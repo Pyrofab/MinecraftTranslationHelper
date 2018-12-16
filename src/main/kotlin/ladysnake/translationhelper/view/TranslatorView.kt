@@ -1,15 +1,21 @@
 package ladysnake.translationhelper.view
 
+import javafx.beans.property.BooleanProperty
+import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.beans.property.StringProperty
 import javafx.scene.control.Button
+import javafx.scene.control.TableColumn
 import javafx.scene.image.Image
 import ladysnake.translationhelper.controller.TranslationController
+import ladysnake.translationhelper.model.data.TranslationMap
 import tornadofx.*
 
 class TranslatorView : View() {
     private val statusProperty: StringProperty = SimpleStringProperty("status: no lang folder selected")
     var status: String by statusProperty
+    private val notEditingProperty: BooleanProperty = SimpleBooleanProperty(true)
+    var isNotEditing: Boolean by notEditingProperty
 
     private lateinit var wimpTrnslBtn: Button
 
@@ -22,18 +28,34 @@ class TranslatorView : View() {
         top = menubar {
             menu("File") {
                 item("Open", "Shortcut+O").action {
-                    TranslationController.chooseFolder()
+                    val langFolder =
+                        TranslationController.fileChooser.showDialog(currentStage)
+                    if (langFolder != null) {
+                        status = "loading lang files"
+                        runAsync {
+                            TranslationController.chooseFolder(langFolder)
+                        } success {
+                            status = if (it != null) {
+                                genTable(it)
+                                "idle"
+                            } else {
+                                "no lang folder selected"
+                            }
+                        } fail {
+                            status = "erred while reading the folder"
+                        }
+                    }
                 }
                 separator()
                 item("Save all", "Shortcut+S") {
-                    isDisable = true
+                    disableProperty().bind(notEditingProperty)
                     action {
                         TranslationController.save()
                         println("Saved !")
                     }
                 }
                 item("Export all", "Shortcut+Shift+S") {
-                    isDisable = true
+                    disableProperty().bind(notEditingProperty)
                     action {
                         println("Saved as...")
                     }
@@ -52,7 +74,7 @@ class TranslatorView : View() {
                 item("Find", "Shortcut+F")
                 separator()
                 item("Joker", "Shortcut+J")
-                isDisable = true
+                disableProperty().bind(notEditingProperty)
             }
             menu("Add...") {
                 item("language file") {
@@ -61,52 +83,29 @@ class TranslatorView : View() {
                 item("translation key") {
                     action { TranslationController.addTranslationKey() }
                 }
-                isDisable = true
+                disableProperty().bind(notEditingProperty)
             }
             wimpTrnslBtn = button("Joker") {
                 tooltip("Uses Google Translate to complete the cell based on the english value.")
                 action { TranslationController.joker() }
-                isDisable = true
+                disableProperty().bind(notEditingProperty)
             }
         }
 
         bottom = label {
             textProperty().bind(statusProperty)
         }
+    }
 
-/*
-        top = hbox(10) {
-            alignment = Pos.CENTER
-            padding = Insets(10.0)
-
-            smartSearch = checkbox("Use smart search") {
-                tooltip("Uses recursive search to find the most likely lang folder from a selected root.")
-            }
-            button("Load a lang folder") {
-                action { TranslationController.chooseFolder() }
-            }
-            saveBtn = button("Save") {
-                action { TranslationController.save() }
-                isDisable = true
-            }
-            newThing = menubutton("Add...") {
-                item("language file") {
-                    action { TranslationController.createFile() }
-                }
-                item("translation key") {
-                    action { TranslationController.addTranslationKey() }
-                }
-                isDisable = true
-            }
-            contextMenuTable = contextmenu {
-                item("Delete row") {
-                    action { TranslationController.removeTranslationKey() }
-                }
-                item("Change translation key") {
-                    action { TranslationController.editTranslationKey() }
-                }
+    fun genTable(items: TranslationMap) {
+        root.center = tableview(items) {
+            readonlyColumn("Lang Key", TranslationMap.TranslationRow::key)
+            for (lang in items.languages) {
+                column(lang.name, valueProvider = {cell: TableColumn.CellDataFeatures<TranslationMap.TranslationRow, String> ->
+                    SimpleStringProperty(cell.value[lang])
+                })
             }
         }
-*/
+        isNotEditing = false
     }
 }

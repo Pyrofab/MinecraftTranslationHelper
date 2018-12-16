@@ -2,7 +2,6 @@ package ladysnake.translationhelper.model
 
 import ladysnake.translationhelper.model.data.Language
 import ladysnake.translationhelper.model.data.LanguageMap
-import ladysnake.translationhelper.model.data.MultiLangMap
 import ladysnake.translationhelper.model.serialization.LanguageMapAdapter
 import java.io.File
 import java.nio.file.Files
@@ -14,29 +13,17 @@ object TranslationLoader {
         adapters += adapter
     }
 
-    fun loadFolder(langFolder: File): MultiLangMap {
-        if (!langFolder.isDirectory) {
-            throw IllegalArgumentException("$langFolder is not a directory")
-        }
-        val ret = MultiLangMap()
-        for (file in langFolder.listFiles()) {
-            ret += load(file)
-        }
-        return ret
-    }
-
-    fun load(langFile: File): LanguageMap {
+    fun load(langFile: File): LanguageMap? {
         val locale = langFile.nameWithoutExtension
         val extension = langFile.extension
-        val languageMap =
-            LanguageMap(Language(locale))
         for (adapter in adapters) {
             if (adapter.accepts(extension)) {
+                val languageMap = LanguageMap(Language(locale))
                 adapter.deserialize(Files.lines(langFile.toPath(), Charsets.UTF_8), languageMap)
-                break
+                return languageMap
             }
         }
-        return languageMap
+        return null
     }
 
     fun save(languageMap: LanguageMap, langFile: File) {
