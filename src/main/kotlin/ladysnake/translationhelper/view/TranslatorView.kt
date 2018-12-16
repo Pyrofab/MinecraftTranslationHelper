@@ -2,7 +2,8 @@ package ladysnake.translationhelper.view
 
 import javafx.beans.property.SimpleStringProperty
 import javafx.beans.property.StringProperty
-import javafx.scene.control.*
+import javafx.scene.control.Button
+import javafx.scene.image.Image
 import ladysnake.translationhelper.controller.TranslationController
 import tornadofx.*
 
@@ -10,13 +11,13 @@ class TranslatorView : View() {
     private val statusProperty: StringProperty = SimpleStringProperty("status: no lang folder selected")
     var status: String by statusProperty
 
-
     private lateinit var wimpTrnslBtn: Button
 
     override val root = borderpane {
         prefWidth = 900.0
         prefHeight = 400.0
         title = "Translation O Matik"
+        addStageIcon(Image(TranslatorView::class.java.getResourceAsStream("/icon.png")))
 
         top = menubar {
             menu("File") {
@@ -31,7 +32,7 @@ class TranslatorView : View() {
                         println("Saved !")
                     }
                 }
-                item("Save as", "Shortcut+Shift+S") {
+                item("Export all", "Shortcut+Shift+S") {
                     isDisable = true
                     action {
                         println("Saved as...")
