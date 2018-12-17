@@ -13,7 +13,6 @@ import javafx.scene.input.ClipboardContent
 import javafx.util.converter.DefaultStringConverter
 import ladysnake.translationhelper.UserSettings
 import ladysnake.translationhelper.controller.TranslationController
-import ladysnake.translationhelper.model.data.Language
 import ladysnake.translationhelper.model.data.TranslationMap
 import ladysnake.translationhelper.model.workspace.SourcesMap
 import tornadofx.*
@@ -90,7 +89,7 @@ class TranslatorView : View() {
                     val tablePosition = table.focusModel.focusedCell
                     val row = table.items[tablePosition.row] as? TranslationMap.TranslationRow ?: return@action
                     val content = ClipboardContent()
-                    val contentString = row[Language(tablePosition.tableColumn.text)]
+                    val contentString = row[tablePosition.tableColumn.language]
                     println("copying $contentString")
                     content.putString(contentString)
                     content.putHtml("<td>$contentString</td>")
@@ -158,6 +157,8 @@ class TranslatorView : View() {
                     isEditable = true
                     prefWidth = 300.0
                     editableProperty().bind(source.editableProperty)
+                    properties[COLUMN_LANGUAGE] = lang
+                    source.changedProperty.addListener { _, _, changed -> text = if (changed) "${lang.name}*" else lang.name }
                     graphic = ToggleButton().apply {
                         setPrefSize(12.0,12.0)
                         addClass(AppStyle.lockButton)

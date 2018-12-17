@@ -1,5 +1,6 @@
 package ladysnake.translationhelper.model.workspace
 
+import javafx.application.Platform
 import ladysnake.translationhelper.model.TranslationLoader
 import ladysnake.translationhelper.model.data.Language
 import ladysnake.translationhelper.model.data.MultiLangMap
@@ -45,6 +46,7 @@ class TranslationWorkspace private constructor(
                 if (sourceFiles[lang.language].hasChanged) {
                     TranslationLoader.save(lang, sourceFiles[lang.language])
                     println("$lang has been saved")
+                    Platform.runLater { sourceFiles[lang.language].hasChanged = false }
                 }
             }
         }

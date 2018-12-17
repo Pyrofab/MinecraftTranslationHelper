@@ -17,6 +17,7 @@ import ladysnake.translationhelper.model.data.TranslationMap
 import ladysnake.translationhelper.model.workspace.SourcesMap
 import ladysnake.translationhelper.model.workspace.TranslationWorkspace
 import ladysnake.translationhelper.view.TranslatorView
+import ladysnake.translationhelper.view.language
 import tornadofx.find
 import java.io.File
 import java.io.IOException
@@ -75,7 +76,7 @@ object TranslationController {
     fun pasteInto(row: Int, column: TableColumn<*,*>) {
         workspace?.updateTranslation(
             row,
-            Language(column.text),
+            column.language,
             Clipboard.getSystemClipboard().string
         )
     }
@@ -109,18 +110,18 @@ object TranslationController {
         val workspace = this.workspace ?: return
         val translated = TranslateAPI.translate(
             workspace.translationData[table.selectionModel.selectedIndex][Language("en_us")] ?: "",
-            table.selectionModel.selectedCells[0].tableColumn.text
+            table.selectionModel.selectedCells[0].tableColumn.language.name
         )
         Platform.runLater { workspace.updateTranslation(
             table.selectionModel.selectedIndex,
-            Language((view.root.center as TableView<*>).selectionModel.selectedCells[0].tableColumn.text),
+            (view.root.center as TableView<*>).selectionModel.selectedCells[0].tableColumn.language,
             translated
         )}
     }
 
     fun onEditCommit(event: TableColumn.CellEditEvent<TranslationMap.TranslationRow, Any>) {
         val workspace = this.workspace ?: return
-        workspace.updateTranslation(event.rowValue.key, Language(event.tableColumn.text), event.newValue as String)
+        workspace.updateTranslation(event.rowValue.key, event.tableColumn.language, event.newValue as String)
     }
 
     fun onSort() {
