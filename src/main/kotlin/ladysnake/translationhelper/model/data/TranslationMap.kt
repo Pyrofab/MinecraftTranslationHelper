@@ -8,6 +8,7 @@ class TranslationMap(
 
     var languages: Set<Language> = setOf()
         private set
+    private val languageUpdateListeners: MutableList<(MapChangeListener.Change<out Language, out String>) -> Unit> = mutableListOf()
 
     init {
         translations.addListener(ListChangeListener {
@@ -15,11 +16,18 @@ class TranslationMap(
         })
     }
 
+    fun addLanguageUpdateListener(listener: (MapChangeListener.Change<out Language, out String>) -> Unit) {
+        languageUpdateListeners += listener
+        translations.forEach { it.addListener(MapChangeListener { event -> listener(event) }) }
+    }
+
     fun toLanguageMap(): MultiLangMap {
         val languageMap = MultiLangMap(languages)
         translations.forEach { row ->
             row.forEach { lang, value ->
-                languageMap[lang, row.key] = value
+                if (!value.isEmpty()) {
+                    languageMap[lang, row.key] = value
+                }
             }
         }
         return languageMap
@@ -34,7 +42,13 @@ class TranslationMap(
     }
 
     operator fun set(key: String, language: Language, value: String) {
-        val translationRow = this[key] ?:  TranslationRow(key).also { translations += it }
+        val translationRow = this[key] ?:  TranslationRow(key).also {
+            translations += it
+            it.addListener(MapChangeListener { change ->
+                languages = translations.flatMap(TranslationRow::keys).toSet()
+                languageUpdateListeners.forEach { it(change) }
+            })
+        }
         translationRow[language] = value
     }
 
@@ -46,11 +60,6 @@ class TranslationMap(
         val key: String,
         private val localized: ObservableMap<Language, String> = FXCollections.observableHashMap()
     ): ObservableMap<Language, String> by localized {
-        init {
-            localized.addListener(MapChangeListener {
-                languages = translations.flatMap(TranslationRow::keys).toSet()
-            })
-        }
 
         override fun toString(): String {
             return "$key -> $localized"

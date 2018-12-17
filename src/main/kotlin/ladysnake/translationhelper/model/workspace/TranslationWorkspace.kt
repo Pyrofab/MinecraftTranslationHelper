@@ -28,9 +28,11 @@ class TranslationWorkspace private constructor(
                 data += langData
                 sourceFiles[langData.language] = file.toSourceFile()
             }
+            val translationData = data.toTranslationMap()
+            translationData.addLanguageUpdateListener { sourceFiles[it.key].hasChanged = true }
             return TranslationWorkspace(
                 langFolder,
-                data.toTranslationMap(),
+                translationData,
                 sourceFiles
             )
         }
@@ -42,6 +44,7 @@ class TranslationWorkspace private constructor(
             for (lang in toSave.values) {
                 if (sourceFiles[lang.language].hasChanged) {
                     TranslationLoader.save(lang, sourceFiles[lang.language])
+                    println("$lang has been saved")
                 }
             }
         }

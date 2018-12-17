@@ -34,4 +34,8 @@ class MultiLangMap(private val languages: MutableMap<Language, LanguageMap> = mu
 class LanguageMap(
     val language: Language,
     private val langEntries: MutableMap<String, String> = mutableMapOf()
-): MutableMap<String, String> by langEntries
+): MutableMap<String, String> by langEntries {
+    override fun toString(): String {
+        return "LanguageMap(language=$language, langEntries=$langEntries)"
+    }
+}
