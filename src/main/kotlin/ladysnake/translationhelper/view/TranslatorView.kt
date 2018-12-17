@@ -1,21 +1,26 @@
 package ladysnake.translationhelper.view
 
+import javafx.application.Platform
 import javafx.beans.property.BooleanProperty
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.beans.property.StringProperty
-import javafx.scene.control.Control
-import javafx.scene.control.SelectionMode
-import javafx.scene.control.TableColumn
-import javafx.scene.control.ToggleButton
+import javafx.scene.control.*
 import javafx.scene.control.cell.TextFieldTableCell
 import javafx.scene.image.Image
+import javafx.scene.input.Clipboard
+import javafx.scene.input.ClipboardContent
 import javafx.util.converter.DefaultStringConverter
+import ladysnake.translationhelper.UserSettings
 import ladysnake.translationhelper.controller.TranslationController
+import ladysnake.translationhelper.model.data.Language
 import ladysnake.translationhelper.model.data.TranslationMap
+import ladysnake.translationhelper.model.workspace.SourcesMap
 import tornadofx.*
 
 class TranslatorView : View() {
+    val translationTable: TableView<*>? get() = root.center as? TableView<*>
+
     private val statusProperty: StringProperty = SimpleStringProperty("status: no lang folder selected")
     var status: String by statusProperty
     private val notEditingProperty: BooleanProperty = SimpleBooleanProperty(true)
@@ -37,9 +42,9 @@ class TranslatorView : View() {
                         status = "loading lang files"
                         runAsync {
                             TranslationController.chooseFolder(langFolder)
-                        } success {
-                            status = if (it != null) {
-                                genTable(it)
+                        } success { (translationData, sourceFiles) ->
+                            status = if (translationData != null && sourceFiles != null) {
+                                genTable(translationData, sourceFiles)
                                 "idle"
                             } else {
                                 "no lang folder selected"
@@ -64,22 +69,60 @@ class TranslatorView : View() {
                     }
                 }
                 separator()
-                item("Exit")
+                checkmenuitem("Toggle autosave", selected = UserSettings.autosaveProperty)
+                separator()
+                item("Exit").action { Platform.exit() }
             }
             menu("_Edit") {
                 isMnemonicParsing = true
-                item("Undo")
-                item("Redo")
+                item("Undo", "Shortcut+Z").action {
+                    TranslationController.undo()
+                }
+                item("Redo", "Shortcut+Y").action {
+                    TranslationController.redo()
+                }
                 separator()
-                item("Cut", "Shortcut+X")
-                item("Copy", "Shortcut+C")
-                item("Paste", "Shortcut+V")
+                item("Cut", "Shortcut+X").action {
+
+                }
+                item("Copy", "Shortcut+C").action {
+                    val table = center as? TableView<*> ?: return@action
+                    val tablePosition = table.focusModel.focusedCell
+                    val row = table.items[tablePosition.row] as? TranslationMap.TranslationRow ?: return@action
+                    val content = ClipboardContent()
+                    val contentString = row[Language(tablePosition.tableColumn.text)]
+                    println("copying $contentString")
+                    content.putString(contentString)
+                    content.putHtml("<td>$contentString</td>")
+                    Clipboard.getSystemClipboard().setContent(content)
+                }
+                item("Paste", "Shortcut+V").action {
+                    val tablePositions = translationTable?.selectionModel?.selectedCells ?: return@action
+                    for (tablePosition in tablePositions) {
+                        TranslationController.pasteInto(tablePosition.row, tablePosition.tableColumn)
+                    }
+                }
                 separator()
                 item("Find", "Shortcut+F")
                 separator()
                 item("Joker", "Shortcut+J") {
                     tooltip("Uses Google Translate to complete the cell based on the english value.")
-                    action { TranslationController.joker() }
+                    action {
+                        status = "fetching translation"
+                        runAsync {
+                            TranslationController.joker()
+                        } success {
+                            status = "idle"
+                        } fail {
+                            val d = Alert(Alert.AlertType.ERROR)
+                            d.headerText = "Failed to retrieve answer. Maybe you are offline ?"
+                            d.contentText = it.toString()
+                            it.printStackTrace()
+                            d.showAndWait()
+                            status = ("failed to retrieve translation")
+
+                        }
+                    }
                 }
                 disableProperty().bind(notEditingProperty)
             }
@@ -100,20 +143,25 @@ class TranslatorView : View() {
         }
     }
     
-    fun genTable(items: TranslationMap) {
+    private fun genTable(
+        items: TranslationMap,
+        sourceFiles: SourcesMap
+    ) {
         root.center = tableview(items) {
             isEditable = true
             readonlyColumn("Lang Key", TranslationMap.TranslationRow::key)
             for (lang in items.languages) {
+                val source = sourceFiles[lang]
                 column(lang.name, valueProvider = {cell: TableColumn.CellDataFeatures<TranslationMap.TranslationRow, String> ->
                     SimpleStringProperty(cell.value[lang])
                 }).apply {
                     isEditable = true
-                    maxHeight = Control.USE_PREF_SIZE
+                    prefWidth = 300.0
+                    editableProperty().bind(source.editableProperty)
                     graphic = ToggleButton().apply {
                         setPrefSize(12.0,12.0)
                         addClass(AppStyle.lockButton)
-                        editableProperty().bind(selectedProperty())
+                        source.editableProperty.bind(selectedProperty())
                     }
                     setCellFactory {
                         TextFieldTableCell<TranslationMap.TranslationRow, String>(DefaultStringConverter())

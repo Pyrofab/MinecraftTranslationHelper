@@ -13,6 +13,7 @@ object TranslationLoader {
         adapters += adapter
     }
 
+    @Synchronized
     fun load(langFile: File): LanguageMap? {
         val locale = langFile.nameWithoutExtension
         val extension = langFile.extension
@@ -26,6 +27,7 @@ object TranslationLoader {
         return null
     }
 
+    @Synchronized
     fun save(languageMap: LanguageMap, langFile: File) {
         val extension = langFile.extension
         for (adapter in adapters) {
