@@ -4,9 +4,13 @@ import javafx.beans.property.BooleanProperty
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.beans.property.StringProperty
-import javafx.scene.control.Button
+import javafx.scene.control.Control
+import javafx.scene.control.SelectionMode
 import javafx.scene.control.TableColumn
+import javafx.scene.control.ToggleButton
+import javafx.scene.control.cell.TextFieldTableCell
 import javafx.scene.image.Image
+import javafx.util.converter.DefaultStringConverter
 import ladysnake.translationhelper.controller.TranslationController
 import ladysnake.translationhelper.model.data.TranslationMap
 import tornadofx.*
@@ -17,8 +21,6 @@ class TranslatorView : View() {
     private val notEditingProperty: BooleanProperty = SimpleBooleanProperty(true)
     var isNotEditing: Boolean by notEditingProperty
 
-    private lateinit var wimpTrnslBtn: Button
-
     override val root = borderpane {
         prefWidth = 900.0
         prefHeight = 400.0
@@ -26,7 +28,8 @@ class TranslatorView : View() {
         addStageIcon(Image(TranslatorView::class.java.getResourceAsStream("/icon.png")))
 
         top = menubar {
-            menu("File") {
+            menu("_File") {
+                isMnemonicParsing = true
                 item("Open", "Shortcut+O").action {
                     val langFolder =
                         TranslationController.fileChooser.showDialog(currentStage)
@@ -63,7 +66,8 @@ class TranslatorView : View() {
                 separator()
                 item("Exit")
             }
-            menu("Edit") {
+            menu("_Edit") {
+                isMnemonicParsing = true
                 item("Undo")
                 item("Redo")
                 separator()
@@ -73,10 +77,14 @@ class TranslatorView : View() {
                 separator()
                 item("Find", "Shortcut+F")
                 separator()
-                item("Joker", "Shortcut+J")
+                item("Joker", "Shortcut+J") {
+                    tooltip("Uses Google Translate to complete the cell based on the english value.")
+                    action { TranslationController.joker() }
+                }
                 disableProperty().bind(notEditingProperty)
             }
-            menu("Add...") {
+            menu("_Add...") {
+                isMnemonicParsing = true
                 item("language file") {
                     action { TranslationController.createFile() }
                 }
@@ -85,27 +93,40 @@ class TranslatorView : View() {
                 }
                 disableProperty().bind(notEditingProperty)
             }
-            wimpTrnslBtn = button("Joker") {
-                tooltip("Uses Google Translate to complete the cell based on the english value.")
-                action { TranslationController.joker() }
-                disableProperty().bind(notEditingProperty)
-            }
         }
 
         bottom = label {
             textProperty().bind(statusProperty)
         }
     }
-
+    
     fun genTable(items: TranslationMap) {
         root.center = tableview(items) {
+            isEditable = true
             readonlyColumn("Lang Key", TranslationMap.TranslationRow::key)
             for (lang in items.languages) {
                 column(lang.name, valueProvider = {cell: TableColumn.CellDataFeatures<TranslationMap.TranslationRow, String> ->
                     SimpleStringProperty(cell.value[lang])
-                })
+                }).apply {
+                    isEditable = true
+                    maxHeight = Control.USE_PREF_SIZE
+                    graphic = ToggleButton().apply {
+                        setPrefSize(12.0,12.0)
+                        addClass(AppStyle.lockButton)
+                        editableProperty().bind(selectedProperty())
+                    }
+                    setCellFactory {
+                        TextFieldTableCell<TranslationMap.TranslationRow, String>(DefaultStringConverter())
+                    }
+                }
             }
+            selectionModel.isCellSelectionEnabled = true
+            selectionModel.selectionMode = SelectionMode.MULTIPLE
+            selectionModel.select(0)
+            onEditCommit { TranslationController.onEditCommit(this) }
+            requestFocus()
         }
         isNotEditing = false
     }
+
 }

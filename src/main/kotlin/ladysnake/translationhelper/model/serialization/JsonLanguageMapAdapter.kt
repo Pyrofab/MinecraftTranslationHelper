@@ -10,6 +10,6 @@ class JsonLanguageMapAdapter : AbstractLanguageMapAdapter("json", JSON_PATTERN) 
     }
 
     override fun serialize(languageMap: LanguageMap): String {
-        return languageMap.entries.joinToString(separator = ",\n", prefix = "{\n", postfix = "\n}") { (key, value) -> "    $key:$value" }
+        return languageMap.entries.joinToString(separator = ",\n", prefix = "{\n", postfix = "\n}") { (key, value) -> "    \"$key\":\"$value\"" }
     }
 }

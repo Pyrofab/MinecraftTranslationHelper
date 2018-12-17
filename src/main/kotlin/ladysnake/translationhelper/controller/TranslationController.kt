@@ -1,7 +1,9 @@
 package ladysnake.translationhelper.controller
 
+import javafx.scene.control.TableColumn
 import javafx.stage.DirectoryChooser
 import ladysnake.translationhelper.model.TranslationWorkspace
+import ladysnake.translationhelper.model.data.Language
 import ladysnake.translationhelper.model.data.TranslationMap
 import ladysnake.translationhelper.view.TranslatorView
 import tornadofx.find
@@ -55,6 +57,15 @@ object TranslationController {
     }
 
     fun joker() {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    fun onEditCommit(event: TableColumn.CellEditEvent<TranslationMap.TranslationRow, Any>) {
+        val workspace = this.workspace ?: return
+        workspace.translations[event.rowValue.key, Language(event.tableColumn.text)] = event.newValue as String
+    }
+
+    fun onSort() {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
