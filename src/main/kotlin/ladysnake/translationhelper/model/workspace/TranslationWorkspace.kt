@@ -3,6 +3,7 @@ package ladysnake.translationhelper.model.workspace
 import javafx.application.Platform
 import ladysnake.translationhelper.model.TranslationLoader
 import ladysnake.translationhelper.model.data.Language
+import ladysnake.translationhelper.model.data.LanguageMap
 import ladysnake.translationhelper.model.data.MultiLangMap
 import ladysnake.translationhelper.model.data.TranslationMap
 import ladysnake.translationhelper.model.transaction.TransactionManager
@@ -40,13 +41,32 @@ class TranslationWorkspace private constructor(
     }
 
     fun save() {
-        val toSave = translationData.toLanguageMap()
+        val savedLanguages = translationData.toLanguageMap()
         runAsync {
-            for (lang in toSave.values) {
+            for (lang in savedLanguages.values) {
                 if (sourceFiles[lang.language].hasChanged) {
-                    TranslationLoader.save(lang, sourceFiles[lang.language])
-                    println("$lang has been saved")
-                    Platform.runLater { sourceFiles[lang.language].hasChanged = false }
+                    save(lang)
+                }
+            }
+        }
+    }
+
+    private fun save(lang: LanguageMap) {
+        TranslationLoader.save(lang, sourceFiles[lang.language])
+        println("$lang has been saved")
+        Platform.runLater { sourceFiles[lang.language].hasChanged = false }
+    }
+
+    fun export(outputFolder: File, extension: String) {
+        val exportedLanguages = translationData.toLanguageMap()
+        runAsync {
+            for (lang in exportedLanguages.values) {
+                // If the exported file is already in the workspace, just save it
+                val sourceFile = sourceFiles[lang.language]
+                if (sourceFile.extension == extension && outputFolder == sourceFile.parentFile) {
+                    save(lang)
+                } else {
+                    TranslationLoader.save(lang, File(outputFolder, "${lang.language}.$extension"))
                 }
             }
         }

@@ -2,13 +2,16 @@ package ladysnake.translationhelper.model
 
 import ladysnake.translationhelper.model.data.Language
 import ladysnake.translationhelper.model.data.LanguageMap
+import ladysnake.translationhelper.model.serialization.AbstractLanguageMapAdapter
 import ladysnake.translationhelper.model.serialization.LanguageMapAdapter
 import java.io.File
 import java.nio.file.Files
 
 object TranslationLoader {
     private val adapters: MutableList<LanguageMapAdapter> = mutableListOf()
+    val knownExtensions: List<String> @Synchronized get() = adapters.filterIsInstance<AbstractLanguageMapAdapter>().map { it.fileExtension }
 
+    @Synchronized
     fun registerAdapter(adapter: LanguageMapAdapter) {
         adapters += adapter
     }

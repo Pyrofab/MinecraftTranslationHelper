@@ -10,12 +10,15 @@ import javafx.scene.control.cell.TextFieldTableCell
 import javafx.scene.image.Image
 import javafx.scene.input.Clipboard
 import javafx.scene.input.ClipboardContent
+import javafx.stage.DirectoryChooser
 import javafx.util.converter.DefaultStringConverter
 import ladysnake.translationhelper.UserSettings
 import ladysnake.translationhelper.controller.TranslationController
+import ladysnake.translationhelper.model.TranslationLoader
 import ladysnake.translationhelper.model.data.TranslationMap
 import ladysnake.translationhelper.model.workspace.SourcesMap
 import tornadofx.*
+import java.io.File
 
 class TranslatorView : View() {
     val translationTable: TableView<*>? get() = root.center as? TableView<*>
@@ -24,6 +27,10 @@ class TranslatorView : View() {
     var status: String by statusProperty
     private val notEditingProperty: BooleanProperty = SimpleBooleanProperty(true)
     var isNotEditing: Boolean by notEditingProperty
+    private val fileChooser: DirectoryChooser = DirectoryChooser().apply {
+        title = "Choose lang folder"
+        initialDirectory = File(".")
+    }
 
     override val root = borderpane {
         prefWidth = 900.0
@@ -36,12 +43,13 @@ class TranslatorView : View() {
                 isMnemonicParsing = true
                 item("Open", "Shortcut+O").action {
                     val langFolder =
-                        TranslationController.fileChooser.showDialog(currentStage)
+                        fileChooser.showDialog(currentStage)
                     if (langFolder != null) {
                         status = "loading lang files"
                         runAsync {
                             TranslationController.chooseFolder(langFolder)
                         } success { (translationData, sourceFiles) ->
+                            fileChooser.initialDirectory = langFolder.parentFile
                             status = if (translationData != null && sourceFiles != null) {
                                 genTable(translationData, sourceFiles)
                                 "idle"
@@ -61,10 +69,19 @@ class TranslatorView : View() {
                         println("Saved !")
                     }
                 }
-                item("Export all", "Shortcut+Shift+S") {
+                menu("Export all") {
                     disableProperty().bind(notEditingProperty)
-                    action {
-                        println("Saved as...")
+                    for (extension in TranslationLoader.knownExtensions) {
+                        item(extension) {
+                            action {
+                                val langFolder = fileChooser.showDialog(currentStage)
+                                if (langFolder != null) {
+                                    status = "exporting lang files"
+                                    TranslationController.export(langFolder, extension)
+                                    status = "idle"
+                                }
+                            }
+                        }
                     }
                 }
                 separator()

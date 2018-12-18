@@ -8,7 +8,6 @@ import javafx.event.EventHandler
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.input.Clipboard
-import javafx.stage.DirectoryChooser
 import javafx.util.Duration
 import ladysnake.translationhelper.UserSettings
 import ladysnake.translationhelper.model.TranslateAPI
@@ -18,6 +17,7 @@ import ladysnake.translationhelper.model.workspace.SourcesMap
 import ladysnake.translationhelper.model.workspace.TranslationWorkspace
 import ladysnake.translationhelper.view.TranslatorView
 import ladysnake.translationhelper.view.language
+import tornadofx.confirmation
 import tornadofx.find
 import java.io.File
 import java.io.IOException
@@ -25,10 +25,6 @@ import java.io.UncheckedIOException
 import java.util.*
 
 object TranslationController {
-    internal val fileChooser: DirectoryChooser = DirectoryChooser().apply {
-        title = "Open resource file"
-        initialDirectory = File(".")
-    }
     private var workspace: TranslationWorkspace? = null
         set(value) {
             field = value
@@ -55,7 +51,6 @@ object TranslationController {
         try {
             val workspace = TranslationWorkspace.load(langFolder)
             println(workspace)
-            fileChooser.initialDirectory = langFolder.parentFile
             this.workspace = workspace
             return ChooseFolderResult(workspace.translationData, workspace.sourceFiles)
         } catch (e: NoSuchElementException) {
@@ -76,7 +71,7 @@ object TranslationController {
     fun pasteInto(row: Int, column: TableColumn<*,*>) {
         workspace?.updateTranslation(
             row,
-            column.language,
+            column.language ?: return,
             Clipboard.getSystemClipboard().string
         )
     }
@@ -87,6 +82,27 @@ object TranslationController {
 
     fun save() {
         workspace?.save()
+    }
+
+    fun export(langFolder: File, extension: String) {
+        val workspace = this.workspace ?: return
+        val overwrittenFiles = mutableSetOf<File>()
+        for (lang in workspace.translationData.languages) {
+            val file = File(langFolder, "$lang.$extension")
+            if (file.exists()) {
+                overwrittenFiles += file
+            }
+        }
+        // Ask confirmation before overwriting
+        if (overwrittenFiles.isEmpty() || confirmation(
+                "The following files will be overwritten:",
+                overwrittenFiles.joinToString(limit = 5) { it.name }
+            ).showAndWait()
+                .filter { it.buttonData.isDefaultButton }
+                .isPresent
+        ) {
+            workspace.export(langFolder, extension)
+        }
     }
 
     fun editTranslationKey() {
@@ -108,20 +124,22 @@ object TranslationController {
     fun joker() {
         val table = view.root.center as? TableView<*> ?: return
         val workspace = this.workspace ?: return
+        val outLang = table.selectionModel.selectedCells[0].tableColumn.language ?: return
         val translated = TranslateAPI.translate(
             workspace.translationData[table.selectionModel.selectedIndex][Language("en_us")] ?: "",
-            table.selectionModel.selectedCells[0].tableColumn.language.name
+            outLang.name
         )
         Platform.runLater { workspace.updateTranslation(
             table.selectionModel.selectedIndex,
-            (view.root.center as TableView<*>).selectionModel.selectedCells[0].tableColumn.language,
+            outLang,
             translated
         )}
     }
 
     fun onEditCommit(event: TableColumn.CellEditEvent<TranslationMap.TranslationRow, Any>) {
         val workspace = this.workspace ?: return
-        workspace.updateTranslation(event.rowValue.key, event.tableColumn.language, event.newValue as String)
+        val language = event.tableColumn.language ?: return
+        workspace.updateTranslation(event.rowValue.key, language, event.newValue as String)
     }
 
     fun onSort() {
