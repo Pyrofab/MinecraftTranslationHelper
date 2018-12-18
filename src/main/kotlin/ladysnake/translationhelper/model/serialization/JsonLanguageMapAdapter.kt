@@ -6,7 +6,7 @@ import java.util.regex.Pattern
 class JsonLanguageMapAdapter : AbstractLanguageMapAdapter("json", JSON_PATTERN) {
 
     companion object {
-        val JSON_PATTERN: Pattern = Pattern.compile(""""(?<key>.+)": "(?<value>.*)"""")
+        val JSON_PATTERN: Pattern = Pattern.compile("""\s*"(?<key>.+)"\s*:\s*"(?<value>.*)",?\s*""")
     }
 
     override fun serialize(languageMap: LanguageMap): String {

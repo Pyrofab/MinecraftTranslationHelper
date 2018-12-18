@@ -19,16 +19,14 @@ class TranslationWorkspace private constructor(
     val transactionManager = TransactionManager(this)
 
     companion object {
-        fun load(langFolder: File): TranslationWorkspace {
+        fun load(langFolder: File, sourceFiles: SourcesMap): TranslationWorkspace {
             if (!langFolder.isDirectory) {
                 throw IllegalArgumentException("$langFolder is not a directory")
             }
             val data = MultiLangMap()
-            val sourceFiles = SourcesMap()
-            for (file in langFolder.listFiles()) {
+            for (file in sourceFiles.values) {
                 val langData = TranslationLoader.load(file) ?: continue
                 data += langData
-                sourceFiles[langData.language] = file.toSourceFile()
             }
             val translationData = data.toTranslationMap()
             translationData.addLanguageUpdateListener { sourceFiles[it.key].hasChanged = true }

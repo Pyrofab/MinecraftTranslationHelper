@@ -1,13 +1,14 @@
 package ladysnake.translationhelper.view
 
+import tornadofx.CssRule
 import tornadofx.Stylesheet
 import tornadofx.cssclass
 import tornadofx.csspseudoclass
 
 class AppStyle: Stylesheet() {
     companion object {
-        val lockButton by cssclass()
-        val selected by csspseudoclass()
+        val lockButton: CssRule by cssclass()
+        val selected: CssRule by csspseudoclass()
     }
 
     init {

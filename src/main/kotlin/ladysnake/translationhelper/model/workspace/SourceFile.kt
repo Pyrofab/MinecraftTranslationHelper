@@ -7,7 +7,7 @@ import tornadofx.getValue
 import tornadofx.setValue
 import java.io.File
 
-class SourceFile(pathName: String): File(pathName) {
+class SourceFile(pathName: String, lock: Boolean = true): File(pathName) {
     companion object {
         val DUMMY =
             SourceFile("${System.getProperty("java.io.tmpdir")}/dummy_translation_file")
@@ -15,11 +15,17 @@ class SourceFile(pathName: String): File(pathName) {
 
     val changedProperty: BooleanProperty = SimpleBooleanProperty(false)
     var hasChanged: Boolean by changedProperty
-    val editableProperty: BooleanProperty = SimpleBooleanProperty(true)
+    val editableProperty: BooleanProperty = SimpleBooleanProperty(!lock)
     var isEditable: Boolean by editableProperty
+    val language = Language(this.nameWithoutExtension)
 }
 
 class SourcesMap(private val sources: MutableMap<Language, SourceFile> = mutableMapOf()): MutableMap<Language, SourceFile> by sources {
+
+    operator fun plusAssign(file: SourceFile) {
+        this += file.language to file
+    }
+
     override operator fun get(key: Language): SourceFile {
         return sources[key] ?: SourceFile.DUMMY.also {
             System.err.println("$key does not have an associated source file")
@@ -28,5 +34,5 @@ class SourcesMap(private val sources: MutableMap<Language, SourceFile> = mutable
     }
 }
 
-fun File.toSourceFile(): SourceFile =
-    SourceFile(this.toString())
+fun File.toSourceFile(locked: Boolean = true): SourceFile =
+    SourceFile(this.toString(), locked)

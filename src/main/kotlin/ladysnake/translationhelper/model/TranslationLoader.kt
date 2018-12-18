@@ -16,6 +16,18 @@ object TranslationLoader {
         adapters += adapter
     }
 
+    fun supports(file: File): Boolean {
+        if (!file.isFile) {
+            return false
+        }
+        for (adapter in adapters) {
+            if (adapter.accepts(file.extension)) {
+                return true
+            }
+        }
+        return false
+    }
+
     @Synchronized
     fun load(langFile: File): LanguageMap? {
         val locale = langFile.nameWithoutExtension

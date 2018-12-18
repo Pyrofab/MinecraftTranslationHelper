@@ -19,6 +19,7 @@ import ladysnake.translationhelper.model.data.TranslationMap
 import ladysnake.translationhelper.model.workspace.SourcesMap
 import tornadofx.*
 import java.io.File
+import java.util.*
 
 class TranslatorView : View() {
     val translationTable: TableView<*>? get() = root.center as? TableView<*>
@@ -46,8 +47,11 @@ class TranslatorView : View() {
                         fileChooser.showDialog(currentStage)
                     if (langFolder != null) {
                         status = "loading lang files"
+                        val langFiles = langFolder.listFiles { f -> TranslationLoader.supports(f) } ?: kotlin.error("Not a directory")
+                        val lockedFiles = SelectFilesDialog(Arrays.asList(*langFiles))
+                            .showAndWait().orElse(null) ?: return@action
                         runAsync {
-                            TranslationController.chooseFolder(langFolder)
+                            TranslationController.chooseFolder(langFolder, lockedFiles)
                         } success { (translationData, sourceFiles) ->
                             fileChooser.initialDirectory = langFolder.parentFile
                             status = if (translationData != null && sourceFiles != null) {
@@ -179,6 +183,7 @@ class TranslatorView : View() {
                     graphic = ToggleButton().apply {
                         setPrefSize(12.0,12.0)
                         addClass(AppStyle.lockButton)
+                        isSelected = source.isEditable
                         source.editableProperty.bind(selectedProperty())
                     }
                     setCellFactory {

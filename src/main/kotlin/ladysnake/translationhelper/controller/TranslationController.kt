@@ -21,8 +21,6 @@ import tornadofx.confirmation
 import tornadofx.find
 import java.io.File
 import java.io.IOException
-import java.io.UncheckedIOException
-import java.util.*
 
 object TranslationController {
     private var workspace: TranslationWorkspace? = null
@@ -47,19 +45,16 @@ object TranslationController {
         }
     }
 
-    fun chooseFolder(langFolder: File): ChooseFolderResult {
-        try {
-            val workspace = TranslationWorkspace.load(langFolder)
+    fun chooseFolder(langFolder: File, lockedFiles: SourcesMap): ChooseFolderResult {
+        return try {
+            val workspace = TranslationWorkspace.load(langFolder, lockedFiles)
             println(workspace)
             this.workspace = workspace
-            return ChooseFolderResult(workspace.translationData, workspace.sourceFiles)
-        } catch (e: NoSuchElementException) {
-            System.err.println("Operation cancelled : " + e.localizedMessage)
+            ChooseFolderResult(workspace.translationData, workspace.sourceFiles)
         } catch (e: IOException) {
-            System.err.println("The file selected isn't a valid folder")
-            throw UncheckedIOException(e)
+            System.err.println("The file selected isn't a valid folder ($e)")
+            ChooseFolderResult.NONE
         }
-        return ChooseFolderResult.NONE
     }
 
     data class ChooseFolderResult(val translationData: TranslationMap?, val sourceFiles: SourcesMap?) {
@@ -100,9 +95,7 @@ object TranslationController {
             ).showAndWait()
                 .filter { it.buttonData.isDefaultButton }
                 .isPresent
-        ) {
-            workspace.export(langFolder, extension)
-        }
+        ) { workspace.export(langFolder, extension) }
     }
 
     fun editTranslationKey() {
