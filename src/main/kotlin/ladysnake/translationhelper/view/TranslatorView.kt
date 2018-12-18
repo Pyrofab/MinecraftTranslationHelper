@@ -102,13 +102,10 @@ class TranslatorView : View() {
                     TranslationController.redo()
                 }
                 separator()
-                item("Cut", "Shortcut+X").action {
-
-                }
-                item("Copy", "Shortcut+C").action {
-                    val table = center as? TableView<*> ?: return@action
+                fun copy() {
+                    val table = center as? TableView<*> ?: return
                     val tablePosition = table.focusModel.focusedCell
-                    val row = table.items[tablePosition.row] as? TranslationMap.TranslationRow ?: return@action
+                    val row = table.items[tablePosition.row] as? TranslationMap.TranslationRow ?: return
                     val content = ClipboardContent()
                     val contentString = row[tablePosition.tableColumn.language]
                     println("copying $contentString")
@@ -116,12 +113,16 @@ class TranslatorView : View() {
                     content.putHtml("<td>$contentString</td>")
                     Clipboard.getSystemClipboard().setContent(content)
                 }
-                item("Paste", "Shortcut+V").action {
-                    val tablePositions = translationTable?.selectionModel?.selectedCells ?: return@action
+                fun setContent(content: String) {
+                    val tablePositions = translationTable?.selectionModel?.selectedCells ?: return
                     for (tablePosition in tablePositions) {
-                        TranslationController.pasteInto(tablePosition.row, tablePosition.tableColumn)
+                        TranslationController.setContentAt(tablePosition.row, tablePosition.tableColumn, content)
                     }
                 }
+                item("Cut", "Shortcut+X").action { copy().also { setContent("") } }
+                item("Copy", "Shortcut+C").action { copy() }
+                item("Paste", "Shortcut+V").action { setContent(Clipboard.getSystemClipboard().string) }
+                item("Delete", "Delete").action { setContent("") }
                 separator()
                 item("Find", "Shortcut+F")
                 separator()

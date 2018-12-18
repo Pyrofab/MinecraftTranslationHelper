@@ -7,7 +7,6 @@ import javafx.application.Platform
 import javafx.event.EventHandler
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
-import javafx.scene.input.Clipboard
 import javafx.util.Duration
 import ladysnake.translationhelper.UserSettings
 import ladysnake.translationhelper.model.TranslateAPI
@@ -63,11 +62,11 @@ object TranslationController {
         }
     }
 
-    fun pasteInto(row: Int, column: TableColumn<*,*>) {
+    fun setContentAt(row: Int, column: TableColumn<*,*>, content: String) {
         workspace?.updateTranslation(
             row,
             column.language ?: return,
-            Clipboard.getSystemClipboard().string
+            content
         )
     }
 
