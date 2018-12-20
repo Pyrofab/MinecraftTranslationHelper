@@ -5,8 +5,11 @@ import javafx.animation.KeyFrame
 import javafx.animation.Timeline
 import javafx.application.Platform
 import javafx.event.EventHandler
+import javafx.scene.control.Alert
 import javafx.scene.control.TableColumn
-import javafx.scene.control.TableView
+import javafx.scene.control.TextInputDialog
+import javafx.scene.input.Clipboard
+import javafx.scene.input.ClipboardContent
 import javafx.util.Duration
 import ladysnake.translationhelper.UserSettings
 import ladysnake.translationhelper.model.TranslateAPI
@@ -16,8 +19,7 @@ import ladysnake.translationhelper.model.workspace.SourcesMap
 import ladysnake.translationhelper.model.workspace.TranslationWorkspace
 import ladysnake.translationhelper.view.TranslatorView
 import ladysnake.translationhelper.view.language
-import tornadofx.confirmation
-import tornadofx.find
+import tornadofx.*
 import java.io.File
 import java.io.IOException
 
@@ -49,6 +51,8 @@ object TranslationController {
             val workspace = TranslationWorkspace.load(langFolder, lockedFiles)
             println(workspace)
             this.workspace = workspace
+            view.canRedo.bind(workspace.transactionManager.canRedo)
+            view.canUndo.bind(workspace.transactionManager.canUndo)
             ChooseFolderResult(workspace.translationData, workspace.sourceFiles)
         } catch (e: IOException) {
             System.err.println("The file selected isn't a valid folder ($e)")
@@ -62,12 +66,35 @@ object TranslationController {
         }
     }
 
-    fun setContentAt(row: Int, column: TableColumn<*,*>, content: String) {
-        workspace?.updateTranslation(
-            row,
-            column.language ?: return,
-            content
-        )
+    fun copySelectedCell() {
+        val table = view.translationTable ?: return
+        val tablePosition = table.focusModel.focusedCell
+        val row = table.items[tablePosition.row] as? TranslationMap.TranslationRow ?: return
+        val content = ClipboardContent()
+        val contentString = row[tablePosition.tableColumn.language]
+        println("copying $contentString")
+        content.putString(contentString)
+        content.putHtml("<td>$contentString</td>")
+        Clipboard.getSystemClipboard().setContent(content)
+    }
+
+    private fun setSelectedCellContent(content: String) {
+        val tablePositions = view.translationTable?.selectionModel?.selectedCells ?: return
+        for (tablePosition in tablePositions) {
+            workspace?.updateTranslation(
+                tablePosition.row,
+                tablePosition.tableColumn.language ?: return,
+                content
+            )
+        }
+    }
+
+    fun clearSelectedCell() {
+        setSelectedCellContent("")
+    }
+
+    fun pasteInSelectedCell() {
+        setSelectedCellContent(Clipboard.getSystemClipboard().string)
     }
 
     fun undo() = workspace?.transactionManager?.undo()
@@ -98,15 +125,30 @@ object TranslationController {
     }
 
     fun editTranslationKey() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val table = view.translationTable ?: return
+        val workspace = workspace ?: return
+        val row = workspace.translationData[table.selectionModel.selectedIndex]
+        val d = TextInputDialog()
+        d.graphic = null
+        d.headerText = "Enter the new translation key:"
+        d.contentText = "Note: this will update every opened file."
+        d.title = "New translation key"
+        d.editor.text = row.key
+        d.showAndWait()
+            .ifPresent { s -> workspace.updateTranslationKey(row.key, s) }
+        table.refresh()
+        table.sort()
     }
 
     fun removeTranslationKey() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val table = view.translationTable ?: return
+        val workspace = workspace ?: return
+        val row = workspace.translationData[table.selectionModel.selectedIndex]
+        workspace.deleteTranslation(row.key)
     }
 
-    fun addTranslationKey() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    fun addTranslationKey(key: String) {
+        workspace?.addTranslationRow(key)
     }
 
     fun createFile() {
@@ -114,18 +156,37 @@ object TranslationController {
     }
 
     fun joker() {
-        val table = view.root.center as? TableView<*> ?: return
-        val workspace = this.workspace ?: return
-        val outLang = table.selectionModel.selectedCells[0].tableColumn.language ?: return
-        val translated = TranslateAPI.translate(
-            workspace.translationData[table.selectionModel.selectedIndex][Language("en_us")] ?: "",
-            outLang.name
-        )
-        Platform.runLater { workspace.updateTranslation(
-            table.selectionModel.selectedIndex,
-            outLang,
-            translated
-        )}
+        view.status = "fetching translation"
+        val outLang = view.translationTable?.selectionModel?.selectedCells?.get(0)?.tableColumn?.language ?: return
+        runAsync {
+            val table = view.translationTable
+            val workspace = workspace
+            if (table != null && workspace != null) {
+                TranslateAPI.translate(
+                    workspace.translationData[table.selectionModel.selectedIndex][Language("en_us")] ?: "",
+                    outLang.name
+                )
+            } else {
+                null
+            }
+        } success { translated ->
+            view.status = "idle"
+            if (translated != null) {
+                workspace?.updateTranslation(
+                    view.translationTable?.selectionModel?.selectedIndex ?: return@success,
+                    outLang,
+                    translated
+                )
+            }
+        } fail {
+            val d = Alert(Alert.AlertType.ERROR)
+            d.headerText = "Failed to retrieve answer. Maybe you are offline ?"
+            d.contentText = it.toString()
+            it.printStackTrace()
+            d.showAndWait()
+            view.status = ("failed to retrieve translation")
+
+        }
     }
 
     fun onEditCommit(event: TableColumn.CellEditEvent<TranslationMap.TranslationRow, Any>) {

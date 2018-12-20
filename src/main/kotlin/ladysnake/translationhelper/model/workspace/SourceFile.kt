@@ -18,6 +18,10 @@ class SourceFile(pathName: String, lock: Boolean = true): File(pathName) {
     val editableProperty: BooleanProperty = SimpleBooleanProperty(!lock)
     var isEditable: Boolean by editableProperty
     val language = Language(this.nameWithoutExtension)
+
+    fun markDirty() {
+        hasChanged = true
+    }
 }
 
 class SourcesMap(private val sources: MutableMap<Language, SourceFile> = mutableMapOf()): MutableMap<Language, SourceFile> by sources {

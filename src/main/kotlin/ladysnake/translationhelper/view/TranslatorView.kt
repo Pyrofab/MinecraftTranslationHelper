@@ -8,12 +8,13 @@ import javafx.beans.property.StringProperty
 import javafx.scene.control.*
 import javafx.scene.control.cell.TextFieldTableCell
 import javafx.scene.image.Image
-import javafx.scene.input.Clipboard
-import javafx.scene.input.ClipboardContent
 import javafx.stage.DirectoryChooser
 import javafx.util.converter.DefaultStringConverter
 import ladysnake.translationhelper.UserSettings
 import ladysnake.translationhelper.controller.TranslationController
+import ladysnake.translationhelper.controller.TranslationController.clearSelectedCell
+import ladysnake.translationhelper.controller.TranslationController.copySelectedCell
+import ladysnake.translationhelper.controller.TranslationController.pasteInSelectedCell
 import ladysnake.translationhelper.model.TranslationLoader
 import ladysnake.translationhelper.model.data.TranslationMap
 import ladysnake.translationhelper.model.workspace.SourcesMap
@@ -23,6 +24,8 @@ import java.util.*
 
 class TranslatorView : View() {
     val translationTable: TableView<*>? get() = root.center as? TableView<*>
+    val canUndo: BooleanProperty = SimpleBooleanProperty(false)
+    val canRedo: BooleanProperty = SimpleBooleanProperty(false)
 
     private val statusProperty: StringProperty = SimpleStringProperty("status: no lang folder selected")
     var status: String by statusProperty
@@ -42,6 +45,12 @@ class TranslatorView : View() {
         top = menubar {
             menu("_File") {
                 isMnemonicParsing = true
+                menu("New") {
+                    item("Lang file") {
+                        action { TranslationController.createFile() }
+                        disableProperty().bind(notEditingProperty)
+                    }
+                }
                 item("Open", "Shortcut+O").action {
                     val langFolder =
                         fileChooser.showDialog(currentStage)
@@ -79,67 +88,54 @@ class TranslatorView : View() {
             }
             menu("_Edit") {
                 isMnemonicParsing = true
-                item("Undo", "Shortcut+Z").action {
-                    TranslationController.undo()
+                item("Undo", "Shortcut+Z") {
+                    action {
+                        TranslationController.undo()
+                    }
+                    disableProperty().bind(canUndo.not())
                 }
-                item("Redo", "Shortcut+Y").action {
-                    TranslationController.redo()
+                item("Redo", "Shortcut+Y") {
+                    action {
+                        TranslationController.redo()
+                    }
+                    disableProperty().bind(canRedo.not())
                 }
                 separator()
-                fun copy() {
-                    val table = center as? TableView<*> ?: return
-                    val tablePosition = table.focusModel.focusedCell
-                    val row = table.items[tablePosition.row] as? TranslationMap.TranslationRow ?: return
-                    val content = ClipboardContent()
-                    val contentString = row[tablePosition.tableColumn.language]
-                    println("copying $contentString")
-                    content.putString(contentString)
-                    content.putHtml("<td>$contentString</td>")
-                    Clipboard.getSystemClipboard().setContent(content)
-                }
-                fun setContent(content: String) {
-                    val tablePositions = translationTable?.selectionModel?.selectedCells ?: return
-                    for (tablePosition in tablePositions) {
-                        TranslationController.setContentAt(tablePosition.row, tablePosition.tableColumn, content)
-                    }
-                }
-                item("Cut", "Shortcut+X").action { copy().also { setContent("") } }
-                item("Copy", "Shortcut+C").action { copy() }
-                item("Paste", "Shortcut+V").action { setContent(Clipboard.getSystemClipboard().string) }
-                item("Delete", "Delete").action { setContent("") }
+                item("Cut", "Shortcut+X").action { copySelectedCell().also { clearSelectedCell() } }
+                item("Copy", "Shortcut+C").action { copySelectedCell() }
+                item("Paste", "Shortcut+V").action { pasteInSelectedCell() }
+                item("Delete", "Delete").action { clearSelectedCell() }
                 separator()
                 item("Find", "Shortcut+F")
                 separator()
-                item("Joker", "Shortcut+J") {
-                    tooltip("Uses Google Translate to complete the cell based on the english value.")
+                item("Add translation key") {
                     action {
-                        status = "fetching translation"
-                        runAsync {
-                            TranslationController.joker()
-                        } success {
-                            status = "idle"
-                        } fail {
-                            val d = Alert(Alert.AlertType.ERROR)
-                            d.headerText = "Failed to retrieve answer. Maybe you are offline ?"
-                            d.contentText = it.toString()
-                            it.printStackTrace()
-                            d.showAndWait()
-                            status = ("failed to retrieve translation")
-
-                        }
+                        val d = TextInputDialog()
+                        d.graphic = null
+                        d.headerText = "Enter the new translation's key:"
+                        d.title = "New translation"
+                        val table = translationTable ?: return@action
+                        table.selectionModel.clearSelection()
+                        d.showAndWait()
+                            .ifPresent(TranslationController::addTranslationKey)
+                        table.sort()
+                        table.requestFocus()
                     }
+                }
+                item("Change translation key").action { TranslationController.editTranslationKey() }
+                item("Delete translation key").action { TranslationController.removeTranslationKey() }
+                separator()
+                item("Ask Google", "Shortcut+J") {
+                    tooltip("Uses Google Translate to complete the cell based on the english value.")
+                    action { TranslationController.joker() }
                 }
                 disableProperty().bind(notEditingProperty)
             }
-            menu("_Add...") {
+            menu("_Help...") {
                 isMnemonicParsing = true
-                item("language file") {
-                    action { TranslationController.createFile() }
+                item("Maybe one day") {
+                    action { }
                 }
-                item("translation key") {
-                    action { TranslationController.addTranslationKey() }
-                }
-                disableProperty().bind(notEditingProperty)
             }
         }
 
@@ -189,7 +185,7 @@ class TranslatorView : View() {
                         setPrefSize(12.0,12.0)
                         addClass(AppStyle.lockButton)
                         isSelected = source.isEditable
-                        source.editableProperty.bind(selectedProperty())
+                        source.editableProperty.bindBidirectional(selectedProperty())
                     }
                     setCellFactory {
                         TextFieldTableCell<TranslationMap.TranslationRow, String>(DefaultStringConverter())
@@ -199,6 +195,10 @@ class TranslatorView : View() {
             selectionModel.isCellSelectionEnabled = true
             selectionModel.selectionMode = SelectionMode.MULTIPLE
             selectionModel.select(0)
+            contextmenu {
+                item("Delete row").action { TranslationController.removeTranslationKey() }
+                item("Change translation key").action { TranslationController.editTranslationKey() }
+            }
             onEditCommit { TranslationController.onEditCommit(this) }
             requestFocus()
         }

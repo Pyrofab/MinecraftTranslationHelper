@@ -18,7 +18,6 @@ class TranslationMap(
 
     fun addLanguageUpdateListener(listener: (MapChangeListener.Change<out Language, out String>) -> Unit) {
         languageUpdateListeners += listener
-        translations.forEach { it.addListener(MapChangeListener { event -> listener(event) }) }
     }
 
     fun toLanguageMap(): MultiLangMap {
@@ -42,13 +41,7 @@ class TranslationMap(
     }
 
     operator fun set(key: String, language: Language, value: String) {
-        val translationRow = this[key] ?:  TranslationRow(key).also {
-            translations += it
-            it.addListener(MapChangeListener { change ->
-                languages = translations.flatMap(TranslationRow::keys).toSet()
-                languageUpdateListeners.forEach { it(change) }
-            })
-        }
+        val translationRow = this[key] ?:  TranslationRow(key).also { translations += it }
         translationRow[language] = value
     }
 
@@ -60,6 +53,22 @@ class TranslationMap(
         val key: String,
         private val localized: ObservableMap<Language, String> = FXCollections.observableHashMap()
     ): ObservableMap<Language, String> by localized {
+
+        init {
+            this.addListener(MapChangeListener { change ->
+                languages = translations.flatMap(TranslationRow::keys).toSet()
+                languageUpdateListeners.forEach { it(change) }
+            })
+        }
+
+        /**
+         * Makes a copy of this translation row that uses [newKey]
+         */
+        fun withKey(newKey: String): TranslationRow {
+            val map = FXCollections.observableHashMap<Language, String>()
+            map.putAll(this)
+            return TranslationRow(newKey, map)
+        }
 
         override fun toString(): String {
             return "$key -> $localized"

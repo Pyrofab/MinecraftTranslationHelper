@@ -6,8 +6,7 @@ import ladysnake.translationhelper.model.data.Language
 import ladysnake.translationhelper.model.data.LanguageMap
 import ladysnake.translationhelper.model.data.MultiLangMap
 import ladysnake.translationhelper.model.data.TranslationMap
-import ladysnake.translationhelper.model.transaction.TransactionManager
-import ladysnake.translationhelper.model.transaction.Update
+import ladysnake.translationhelper.model.transaction.*
 import tornadofx.runAsync
 import java.io.File
 
@@ -29,7 +28,7 @@ class TranslationWorkspace private constructor(
                 data += langData
             }
             val translationData = data.toTranslationMap()
-            translationData.addLanguageUpdateListener { sourceFiles[it.key].hasChanged = true }
+            translationData.addLanguageUpdateListener { sourceFiles[it.key].markDirty() }
             return TranslationWorkspace(
                 langFolder,
                 translationData,
@@ -74,6 +73,14 @@ class TranslationWorkspace private constructor(
         return "TranslationWorkspace(folder=$folder, translationData=$translationData)"
     }
 
+    fun addTranslationRow(key: String, row: TranslationMap.TranslationRow? = null) {
+        transactionManager.run(InsertRow(key, row))
+    }
+
+    fun deleteTranslation(key: String) {
+        transactionManager.run(DeleteRow(key))
+    }
+
     fun updateTranslation(index: Int, language: Language, text: String) {
         val row = translationData[index]
         updateTranslation(row.key, language, text, oldValue = row[language])
@@ -87,5 +94,9 @@ class TranslationWorkspace private constructor(
         if (sourceFiles[language].isEditable) {
             transactionManager.run(Update(key, language, newValue, oldValue ?: ""))
         }
+    }
+
+    fun updateTranslationKey(oldKey: String, newKey: String) {
+        transactionManager.run(UpdateKey(oldKey, newKey))
     }
 }
