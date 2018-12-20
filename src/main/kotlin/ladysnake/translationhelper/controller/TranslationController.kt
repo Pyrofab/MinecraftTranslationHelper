@@ -6,10 +6,12 @@ import javafx.animation.Timeline
 import javafx.application.Platform
 import javafx.event.EventHandler
 import javafx.scene.control.Alert
+import javafx.scene.control.ButtonType
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TextInputDialog
 import javafx.scene.input.Clipboard
 import javafx.scene.input.ClipboardContent
+import javafx.stage.WindowEvent
 import javafx.util.Duration
 import ladysnake.translationhelper.UserSettings
 import ladysnake.translationhelper.model.TranslateAPI
@@ -43,6 +45,21 @@ object TranslationController {
             } else {
                 autosaveTimer.pause()
             }
+        }
+    }
+
+    /**
+     * Handles the program exiting
+     */
+    fun onExit(event: WindowEvent) {
+        val workspace = workspace ?: return
+        if (UserSettings.autosaveProperty.get()) {
+            workspace.save()
+        } else if (workspace.sourceFiles.values.any { it.hasChanged }) {
+            val confirm = Alert(Alert.AlertType.CONFIRMATION)
+            confirm.headerText = "You have some unsaved changes !"
+            confirm.contentText = "Press OK to ignore"
+            confirm.showAndWait().filter { b -> b == ButtonType.CANCEL }.ifPresent { event.consume() }
         }
     }
 

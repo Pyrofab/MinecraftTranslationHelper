@@ -41,6 +41,7 @@ class TranslatorView : View() {
         prefHeight = 400.0
         title = "Translation O Matik"
         addStageIcon(Image(TranslatorView::class.java.getResourceAsStream("/icon.png")))
+        primaryStage.setOnCloseRequest { TranslationController.onExit(it) }
 
         top = menubar {
             menu("_File") {
