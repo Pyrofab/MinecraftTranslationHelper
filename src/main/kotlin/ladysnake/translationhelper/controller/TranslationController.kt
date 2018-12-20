@@ -169,7 +169,7 @@ object TranslationController {
     }
 
     fun createFile() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("Language file creation is not supported yet")
     }
 
     fun joker() {

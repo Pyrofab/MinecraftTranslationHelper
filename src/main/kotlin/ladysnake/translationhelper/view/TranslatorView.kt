@@ -51,6 +51,7 @@ class TranslatorView : View() {
                         action { TranslationController.createFile() }
                         disableProperty().bind(notEditingProperty)
                     }
+                    isVisible = false // NYI
                 }
                 item("Open", "Shortcut+O").action {
                     val langFolder =
