@@ -25,6 +25,7 @@ import tornadofx.*
 import java.io.File
 import java.io.IOException
 
+
 object TranslationController {
     private var workspace: TranslationWorkspace? = null
         set(value) {
@@ -210,5 +211,33 @@ object TranslationController {
         val workspace = this.workspace ?: return
         val language = event.tableColumn.language ?: return
         workspace.updateTranslation(event.rowValue.key, language, event.newValue as String)
+    }
+
+    fun findReplace() {
+        TODO("Find replace not implemented yet")
+/*
+        val findReplaceDialog: FindReplaceDialog
+        val table = view.translationTable ?: return
+        val availableLanguages = workspace?.translationData?.languages ?: return
+        val focusModel = table.focusModel
+        val focusedItem = focusModel.focusedItem as? TranslationMap.TranslationRow ?: return
+        findReplaceDialog = FindReplaceDialog(availableLanguages)
+        findReplaceDialog.setRegex(focusedItem.get(Language("en_us")) ?: "")
+        if (focusModel.focusedCell.tableColumn != null) {
+            val selectedLang = focusModel.focusedCell.tableColumn.language
+            findReplaceDialog.setToLang(selectedLang)
+            findReplaceDialog.setReplace(focusedItem[selectedLang] as String)
+        }
+        findReplaceDialog.showAndWait().ifPresent({ params ->
+            workspace.searchReplace(
+                params.fromLang,
+                params.toLang,
+                params.regex,
+                params.replace,
+                params.replaceExistingTranslations
+            )
+        })
+        table.refresh()
+*/
     }
 }

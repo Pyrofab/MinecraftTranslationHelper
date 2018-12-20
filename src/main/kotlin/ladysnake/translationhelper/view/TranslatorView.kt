@@ -108,7 +108,10 @@ class TranslatorView : View() {
                 item("Paste", "Shortcut+V").action { pasteInSelectedCell() }
                 item("Delete", "Delete").action { clearSelectedCell() }
                 separator()
-                item("Find", "Shortcut+F")
+                item("Replace", "Shortcut+R") {
+                    action { TranslationController.findReplace()}
+                    isVisible = false
+                }
                 separator()
                 item("Add translation key") {
                     action {
@@ -128,7 +131,7 @@ class TranslatorView : View() {
                 item("Delete translation key").action { TranslationController.removeTranslationKey() }
                 separator()
                 item("Ask Google", "Shortcut+J") {
-                    tooltip("Uses Google Translate to complete the cell based on the english value.")
+//                    tooltip("Uses Google Translate to complete the cell based on the english value.")
                     action { TranslationController.joker() }
                 }
                 disableProperty().bind(notEditingProperty)
