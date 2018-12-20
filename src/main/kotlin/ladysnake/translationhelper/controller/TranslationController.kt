@@ -133,9 +133,4 @@ object TranslationController {
         val language = event.tableColumn.language ?: return
         workspace.updateTranslation(event.rowValue.key, language, event.newValue as String)
     }
-
-    fun onSort() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
 }

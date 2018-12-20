@@ -46,23 +46,7 @@ class TranslatorView : View() {
                     val langFolder =
                         fileChooser.showDialog(currentStage)
                     if (langFolder != null) {
-                        status = "loading lang files"
-                        val langFiles = langFolder.listFiles { f -> TranslationLoader.supports(f) } ?: kotlin.error("Not a directory")
-                        val lockedFiles = SelectFilesDialog(Arrays.asList(*langFiles))
-                            .showAndWait().orElse(null) ?: return@action
-                        runAsync {
-                            TranslationController.chooseFolder(langFolder, lockedFiles)
-                        } success { (translationData, sourceFiles) ->
-                            fileChooser.initialDirectory = langFolder.parentFile
-                            status = if (translationData != null && sourceFiles != null) {
-                                genTable(translationData, sourceFiles)
-                                "idle"
-                            } else {
-                                "no lang folder selected"
-                            }
-                        } fail {
-                            status = "erred while reading the folder"
-                        }
+                        loadLangFolder(langFolder)
                     }
                 }
                 separator()
@@ -163,7 +147,27 @@ class TranslatorView : View() {
             textProperty().bind(statusProperty)
         }
     }
-    
+
+    fun loadLangFolder(langFolder: File) {
+        status = "loading lang files"
+        val langFiles = langFolder.listFiles { f -> TranslationLoader.supports(f) } ?: kotlin.error("Not a directory")
+        val lockedFiles = SelectFilesDialog(Arrays.asList(*langFiles))
+            .showAndWait().orElse(null) ?: return
+        runAsync {
+            TranslationController.chooseFolder(langFolder, lockedFiles)
+        } success { (translationData, sourceFiles) ->
+            fileChooser.initialDirectory = langFolder.parentFile
+            status = if (translationData != null && sourceFiles != null) {
+                genTable(translationData, sourceFiles)
+                "idle"
+            } else {
+                "no lang folder selected"
+            }
+        } fail {
+            status = "erred while reading the folder"
+        }
+    }
+
     private fun genTable(
         items: TranslationMap,
         sourceFiles: SourcesMap
