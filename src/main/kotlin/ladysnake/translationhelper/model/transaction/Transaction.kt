@@ -3,6 +3,7 @@ package ladysnake.translationhelper.model.transaction
 import ladysnake.translationhelper.model.data.Language
 import ladysnake.translationhelper.model.data.TranslationMap
 import ladysnake.translationhelper.model.workspace.TranslationWorkspace
+import java.lang.Math.max
 
 interface Transaction {
     /**
@@ -11,11 +12,15 @@ interface Transaction {
     operator fun invoke(workspace: TranslationWorkspace): Transaction
 }
 
-class Update(private val key: String, private val language: Language, private val newVal: String, private val oldVal: String, parent: Transaction? = null): Transaction {
+class Update(private val key: String, private val language: Language, private val newVal: String?, private val oldVal: String?, parent: Transaction? = null): Transaction {
     private val inverse: Transaction = parent ?: Update(key, language, newVal = this.oldVal, oldVal = this.newVal, parent = this)
 
     override fun invoke(workspace: TranslationWorkspace): Transaction {
-        workspace.translationData[key, language] = newVal
+        if (newVal != null) {
+            workspace.translationData[key, language] = newVal
+        } else {
+            workspace.translationData[key]?.remove(language)
+        }
         return inverse
     }
 }
@@ -27,7 +32,7 @@ class InsertRow(private val key: String, private val row: TranslationMap.Transla
         if (row != null) {
             workspace.translationData.add(index, row)
         } else {
-            workspace.translationData[key, Language("en_us")] = ""
+            workspace.translationData.add(max(index, 0), workspace.translationData.TranslationRow(key))
         }
         return inverse
     }

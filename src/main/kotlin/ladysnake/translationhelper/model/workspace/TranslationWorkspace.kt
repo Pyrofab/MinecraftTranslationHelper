@@ -74,8 +74,8 @@ class TranslationWorkspace private constructor(
         return "TranslationWorkspace(folder=$folder, translationData=$translationData)"
     }
 
-    fun addTranslationRow(key: String, row: TranslationMap.TranslationRow? = null) {
-        transactionManager.run(InsertRow(key, row))
+    fun addTranslationRow(key: String, index: Int = 0) {
+        transactionManager.run(InsertRow(key, index = index))
     }
 
     fun deleteTranslation(key: String) {
@@ -85,8 +85,8 @@ class TranslationWorkspace private constructor(
     fun updateTranslation(
         index: Int,
         language: Language,
-        text: String,
-        oldValue: String = translationData[index][language] ?: ""
+        text: String?,
+        oldValue: String? = translationData[index][language]
     ) {
         val row = translationData[index]
         updateTranslation(row.key, language, text, oldValue)
@@ -95,8 +95,8 @@ class TranslationWorkspace private constructor(
     fun updateTranslation(
         key: String,
         language: Language,
-        newValue: String,
-        oldValue: String = translationData[key, language] ?: ""
+        newValue: String?,
+        oldValue: String? = translationData[key, language]
     ) {
         if (sourceFiles[language].isEditable) {
             transactionManager.run(Update(key, language, newValue, oldValue))
@@ -116,7 +116,7 @@ class TranslationWorkspace private constructor(
     ) {
         val translationList = translationData
         for ((i, translationRow) in translationList.withIndex()) {
-            if (!translationRow.containsKey(fromLang) || translationRow.containsKey(toLang) && !replaceExistingTranslations) continue
+            if (!translationRow.containsKey(fromLang) || !translationRow[toLang].isNullOrEmpty() && !replaceExistingTranslations) continue
             val matcher = regex.matcher(translationRow[fromLang])
             if (matcher.matches()) {
                 var replace = replacePattern

@@ -12,6 +12,7 @@ import ladysnake.translationhelper.model.workspace.toSourceFile
 import tornadofx.checkbox
 import tornadofx.column
 import tornadofx.tableview
+import tornadofx.tooltip
 import java.io.File
 
 class SelectFilesDialog(files: List<File>) : Dialog<SourcesMap>() {
@@ -39,6 +40,7 @@ class SelectFilesDialog(files: List<File>) : Dialog<SourcesMap>() {
                         list.forEach { it.isToLock.set(lockAll) }
                     }
                     isSelected = false
+                    tooltip("(Dis)allow file edition for all files")
                 }
             }
             column<ExtendedFile, String>("File") { SimpleStringProperty(it.value.file.name) }

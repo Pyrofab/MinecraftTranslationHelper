@@ -11,11 +11,11 @@ import javafx.scene.control.ComboBox
 import javafx.scene.control.Dialog
 import ladysnake.translationhelper.model.data.Language
 import tornadofx.*
-import java.util.regex.Pattern
 
 
 class FindReplaceDialog(
     private val languages: ObservableList<String>,
+    private val isReadOnly: String.() -> Boolean,
     fromLang: String,
     toLang: String,
     regex: String,
@@ -26,9 +26,11 @@ class FindReplaceDialog(
     private val regex: StringProperty = SimpleStringProperty("")
     private val replacement: StringProperty = SimpleStringProperty("")
     private val replaceExistingTranslations: BooleanProperty = SimpleBooleanProperty(true)
+    private val useRegex: BooleanProperty = SimpleBooleanProperty(true)
 
-    constructor(languages: List<String>) : this(
+    constructor(languages: List<String>, isReadOnly: String.() -> Boolean) : this(
         FXCollections.observableList(languages),
+        isReadOnly,
         if (languages.isEmpty()) "" else languages[0],
         if (languages.size > 1) languages[1] else if (languages.isEmpty()) "" else languages[0],
         "", ""
@@ -44,7 +46,7 @@ class FindReplaceDialog(
                     rowIndex = 1
                 }
             }
-            this@FindReplaceDialog.toLang = combobox(values = languages) {
+            this@FindReplaceDialog.toLang = combobox(values = languages.filter { !it.isReadOnly() }) {
                 selectionModel.select(toLang)
                 gridpaneConstraints {
                     columnIndex = 3
@@ -80,13 +82,26 @@ class FindReplaceDialog(
                 replaceExistingTranslations.bind(selectedProperty())
                 isSelected = true
             }
+            checkbox("Allow wildcards / raw regex") {
+                gridpaneConstraints {
+                    columnIndex = 1
+                    rowIndex = 4
+                }
+                useRegex.bind(selectedProperty())
+                isSelected = true
+            }
         }
-        this.title = "Search and replacement"
+        this.title = "Search and replace"
         this.headerText = "Search for a string from a language and convert it to something else"
         this.dialogPane.buttonTypes.add(ButtonType.CANCEL)
         this.dialogPane.buttonTypes.add(ButtonType.APPLY)
         this.setResultConverter { type -> if (type == ButtonType.APPLY) FindReplaceParameters(
-            Language(this.fromLang.value), Language(this.toLang.value), this.replacement.get(), Pattern.compile(this.regex.get()), this.replaceExistingTranslations.get()
+            Language(this.fromLang.value),
+            Language(this.toLang.value),
+            this.replacement.get(),
+            this.regex.get(),
+            this.replaceExistingTranslations.get(),
+            this.useRegex.get()
         ) else null }
     }
 
@@ -97,7 +112,7 @@ class FindReplaceDialog(
     }
 
     fun setToLang(toLang: String) {
-        if (toLang in languages) {
+        if (toLang in languages && !toLang.isReadOnly()) {
             this.toLang.selectionModel.select(toLang)
         }
     }
@@ -111,8 +126,9 @@ class FindReplaceDialog(
     data class FindReplaceParameters(
         val fromLang: Language,
         val toLang: Language,
-        val replace: String,
-        val regex: Pattern,
-        val replaceExistingTranslations: Boolean
+        val replacement: String,
+        val inputString: String,
+        val replaceExistingTranslations: Boolean,
+        val useRegex: Boolean
     )
 }

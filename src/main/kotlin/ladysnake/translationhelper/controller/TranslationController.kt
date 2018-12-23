@@ -17,6 +17,8 @@ import ladysnake.translationhelper.UserSettings
 import ladysnake.translationhelper.model.TranslateAPI
 import ladysnake.translationhelper.model.data.Language
 import ladysnake.translationhelper.model.data.TranslationMap
+import ladysnake.translationhelper.model.toQuotedRegex
+import ladysnake.translationhelper.model.wildcardToRegex
 import ladysnake.translationhelper.model.workspace.SourceFile
 import ladysnake.translationhelper.model.workspace.SourcesMap
 import ladysnake.translationhelper.model.workspace.TranslationWorkspace
@@ -99,7 +101,7 @@ object TranslationController {
         Clipboard.getSystemClipboard().setContent(content)
     }
 
-    private fun setSelectedCellContent(content: String) {
+    private fun setSelectedCellContent(content: String?) {
         val tablePositions = view.translationTable?.selectionModel?.selectedCells ?: return
         for (tablePosition in tablePositions) {
             workspace?.updateTranslation(
@@ -168,8 +170,16 @@ object TranslationController {
         workspace.deleteTranslation(row.key)
     }
 
-    fun addTranslationKey(key: String) {
-        workspace?.addTranslationRow(key)
+    fun addTranslationKey(index: Int = 0) {
+        val d = TextInputDialog()
+        d.graphic = null
+        d.headerText = "Enter the new translation's key:"
+        d.title = "New translation"
+        val table = view.translationTable ?: return
+        table.selectionModel.clearSelection()
+        d.showAndWait().ifPresent { key -> workspace?.addTranslationRow(key, index) }
+        table.sort()
+        table.requestFocus()
     }
 
     fun createLangFile(newLangFile: File): CreateLangFileResult {
@@ -177,6 +187,7 @@ object TranslationController {
         val lang = Language(newLangFile.nameWithoutExtension)
         val file = newLangFile.toSourceFile()
         langFiles[lang] = file
+        workspace?.translationData?.languages?.add(lang)
         return CreateLangFileResult(lang, file)
     }
 
@@ -234,26 +245,26 @@ object TranslationController {
         val workspace = workspace ?: return
         val focusModel = table.focusModel
         val focusedItem: TranslationMap.TranslationRow? = focusModel.focusedItem
-        val editableLanguages = availableLanguages.filter { workspace.sourceFiles[it].isEditable }.map { it.name }
-        if (editableLanguages.isEmpty()) {
-            warning("No editable row")
+        if (availableLanguages.none { workspace.sourceFiles[it].isEditable }) {
+            warning("No editable language")
             return
         }
-        val findReplaceDialog = FindReplaceDialog(editableLanguages)
+        val findReplaceDialog = FindReplaceDialog(availableLanguages.map { it.name }) { workspace.sourceFiles[Language(this)].isEditable }
         if (focusedItem != null && focusModel.focusedCell.tableColumn != null) {
             val selectedLang = focusModel.focusedCell.tableColumn.language ?: return
-            val englishTranslation = focusedItem[Language("en_us")]
+            val englishTranslation = focusedItem[Language("en_us")] ?: focusedItem[Language("en_US")]
             if (englishTranslation != null) {
                 findReplaceDialog.setRegex(englishTranslation)
                 findReplaceDialog.setFromLang("en_us")
             }
             findReplaceDialog.setToLang(selectedLang.name)
         }
-        findReplaceDialog.showAndWait().ifPresent { (fromLang, toLang, replace, regex, replaceExistingTranslations) ->
+        findReplaceDialog.showAndWait().ifPresent { (fromLang, toLang, replace, regex, replaceExistingTranslations, useRegex) ->
+            val searchFor = if (useRegex) { wildcardToRegex(regex) } else { regex.toQuotedRegex() }
             workspace.searchReplace(
                 fromLang,
                 toLang,
-                regex,
+                searchFor,
                 replace,
                 replaceExistingTranslations
             )

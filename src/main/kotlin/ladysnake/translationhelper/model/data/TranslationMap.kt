@@ -1,20 +1,16 @@
 package ladysnake.translationhelper.model.data
 
-import javafx.collections.*
+import javafx.collections.FXCollections
+import javafx.collections.MapChangeListener
+import javafx.collections.ObservableList
+import javafx.collections.ObservableMap
 
 class TranslationMap(
     private val translations: ObservableList<TranslationRow> = FXCollections.observableArrayList()
 ): ObservableList<TranslationMap.TranslationRow> by translations {
 
-    var languages: Set<Language> = setOf()
-        private set
+    val languages: MutableSet<Language> = translations.flatMap(TranslationRow::keys).toMutableSet()
     private val languageUpdateListeners: MutableList<(MapChangeListener.Change<out Language, out String>) -> Unit> = mutableListOf()
-
-    init {
-        translations.addListener(ListChangeListener {
-            languages = translations.flatMap(TranslationRow::keys).toSet()
-        })
-    }
 
     fun addLanguageUpdateListener(listener: (MapChangeListener.Change<out Language, out String>) -> Unit) {
         languageUpdateListeners += listener
@@ -56,8 +52,8 @@ class TranslationMap(
 
         init {
             this.addListener(MapChangeListener { change ->
-                languages = translations.flatMap(TranslationRow::keys).toSet()
                 languageUpdateListeners.forEach { it(change) }
+                languages += change.key
             })
         }
 

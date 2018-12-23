@@ -5,7 +5,10 @@ import javafx.beans.property.BooleanProperty
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.beans.property.StringProperty
-import javafx.scene.control.*
+import javafx.scene.control.SelectionMode
+import javafx.scene.control.TableColumn
+import javafx.scene.control.TableView
+import javafx.scene.control.ToggleButton
 import javafx.scene.control.cell.TextFieldTableCell
 import javafx.scene.image.Image
 import javafx.stage.DirectoryChooser
@@ -22,7 +25,9 @@ import ladysnake.translationhelper.model.data.TranslationMap
 import ladysnake.translationhelper.model.workspace.SourceFile
 import ladysnake.translationhelper.model.workspace.SourcesMap
 import tornadofx.*
+import java.awt.Desktop
 import java.io.File
+import java.net.URI
 import java.util.*
 
 class TranslatorView : View() {
@@ -127,37 +132,23 @@ class TranslatorView : View() {
                 item("Paste", "Shortcut+V").action { pasteInSelectedCell() }
                 item("Delete", "Delete").action { clearSelectedCell() }
                 separator()
-                item("Replace", "Shortcut+R") {
+                item("Smart Replace", "Shortcut+R") {
                     action { TranslationController.findReplace()}
                 }
                 separator()
-                item("Add translation key") {
-                    action {
-                        val d = TextInputDialog()
-                        d.graphic = null
-                        d.headerText = "Enter the new translation's key:"
-                        d.title = "New translation"
-                        val table = translationTable ?: return@action
-                        table.selectionModel.clearSelection()
-                        d.showAndWait()
-                            .ifPresent(TranslationController::addTranslationKey)
-                        table.sort()
-                        table.requestFocus()
-                    }
-                }
+                item("Add translation key").action { TranslationController.addTranslationKey() }
                 item("Change translation key").action { TranslationController.editTranslationKey() }
                 item("Delete translation key").action { TranslationController.removeTranslationKey() }
                 separator()
                 item("Ask Google", "Shortcut+J") {
-//                    tooltip("Uses Google Translate to complete the cell based on the english value.")
                     action { TranslationController.joker() }
                 }
                 disableProperty().bind(notEditingProperty)
             }
             menu("_Help...") {
                 isMnemonicParsing = true
-                item("Maybe one day") {
-                    action { }
+                item("README") {
+                    action { Desktop.getDesktop().browse(URI("https://github.com/Pyrofab/MinecraftTranslationHelper/blob/master/README.md")) }
                 }
             }
         }
@@ -176,7 +167,7 @@ class TranslatorView : View() {
             TranslationController.chooseFolder(langFolder, lockedFiles)
         } success { (translationData, sourceFiles) ->
             langDirChooser.initialDirectory = langFolder.parentFile
-            newLangChooser.initialDirectory = langFolder.parentFile
+            newLangChooser.initialDirectory = langFolder
             status = if (translationData != null && sourceFiles != null) {
                 genTable(translationData, sourceFiles)
                 "idle"
@@ -203,6 +194,7 @@ class TranslatorView : View() {
             selectionModel.selectionMode = SelectionMode.MULTIPLE
             selectionModel.select(0)
             contextmenu {
+                item("Insert row").action { TranslationController.addTranslationKey(selectionModel.selectedIndex) }
                 item("Delete row").action { TranslationController.removeTranslationKey() }
                 item("Change translation key").action { TranslationController.editTranslationKey() }
             }
