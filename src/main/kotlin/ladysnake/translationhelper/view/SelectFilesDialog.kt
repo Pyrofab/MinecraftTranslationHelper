@@ -19,7 +19,7 @@ class SelectFilesDialog(files: List<File>) : Dialog<SourcesMap>() {
 
     init {
         val list = FXCollections.observableArrayList<ExtendedFile>()
-        files.mapTo(list) { f ->
+        files.mapTo(list) { f ->    // Conveniently, this order makes .json be opened instead of .lang by default
             ExtendedFile(f, list.none { it.file.nameWithoutExtension == f.nameWithoutExtension && it.isToOpen.get() }, false)
         }
         this.dialogPane.content = tableview(list) {
@@ -30,7 +30,7 @@ class SelectFilesDialog(files: List<File>) : Dialog<SourcesMap>() {
                 prefWidth = 60.0
                 graphic = checkbox {
                     selectedProperty().addListener { _, _, openAll ->
-                        for (f in list) {    // Lazy way of having .json be opened instead of .lang by default
+                        for (f in list) {
                             if (list.any { it != f && it.file.nameWithoutExtension == f.file.nameWithoutExtension && it.isToOpen.get() }) {
                                 f.isToOpen.set(false)
                             } else {
