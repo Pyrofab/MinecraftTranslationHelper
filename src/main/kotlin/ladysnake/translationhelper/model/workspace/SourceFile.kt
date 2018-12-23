@@ -38,5 +38,5 @@ class SourcesMap(private val sources: MutableMap<Language, SourceFile> = mutable
     }
 }
 
-fun File.toSourceFile(locked: Boolean = true): SourceFile =
+fun File.toSourceFile(locked: Boolean = false): SourceFile =
     SourceFile(this.toString(), locked)

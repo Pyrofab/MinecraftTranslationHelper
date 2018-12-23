@@ -18,7 +18,7 @@ class SelectFilesDialog(files: List<File>) : Dialog<SourcesMap>() {
 
     init {
         val list = FXCollections
-            .observableList(files.map { f -> ExtendedFile(f, true, true) })
+            .observableList(files.map { f -> ExtendedFile(f, true, false) })
         for (f in list.reversed()) {    // Lazy way of having .json be opened instead of .lang by default
             if (list.any { it != f && it.file.nameWithoutExtension == f.file.nameWithoutExtension && it.isToOpen.get() }) {
                 f.isToOpen.set(false)
@@ -38,7 +38,7 @@ class SelectFilesDialog(files: List<File>) : Dialog<SourcesMap>() {
                     selectedProperty().addListener { _, _, lockAll ->
                         list.forEach { it.isToLock.set(lockAll) }
                     }
-                    isSelected = true
+                    isSelected = false
                 }
             }
             column<ExtendedFile, String>("File") { SimpleStringProperty(it.value.file.name) }

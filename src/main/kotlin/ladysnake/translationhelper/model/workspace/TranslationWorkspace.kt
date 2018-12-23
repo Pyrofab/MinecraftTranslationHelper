@@ -9,6 +9,7 @@ import ladysnake.translationhelper.model.data.TranslationMap
 import ladysnake.translationhelper.model.transaction.*
 import tornadofx.runAsync
 import java.io.File
+import java.util.regex.Pattern
 
 class TranslationWorkspace private constructor(
     val folder: File,
@@ -81,22 +82,48 @@ class TranslationWorkspace private constructor(
         transactionManager.run(DeleteRow(key))
     }
 
-    fun updateTranslation(index: Int, language: Language, text: String) {
+    fun updateTranslation(
+        index: Int,
+        language: Language,
+        text: String,
+        oldValue: String = translationData[index][language] ?: ""
+    ) {
         val row = translationData[index]
-        updateTranslation(row.key, language, text, oldValue = row[language])
+        updateTranslation(row.key, language, text, oldValue)
     }
 
-    fun updateTranslation(key: String, language: Language, text: String) {
-        updateTranslation(key, language, text, oldValue = translationData[key]?.get(language))
-    }
-
-    private fun updateTranslation(key: String, language: Language, newValue: String, oldValue: String?) {
+    fun updateTranslation(
+        key: String,
+        language: Language,
+        newValue: String,
+        oldValue: String = translationData[key, language] ?: ""
+    ) {
         if (sourceFiles[language].isEditable) {
-            transactionManager.run(Update(key, language, newValue, oldValue ?: ""))
+            transactionManager.run(Update(key, language, newValue, oldValue))
         }
     }
 
     fun updateTranslationKey(oldKey: String, newKey: String) {
         transactionManager.run(UpdateKey(oldKey, newKey))
+    }
+
+    fun searchReplace(
+        fromLang: Language,
+        toLang: Language,
+        regex: Pattern,
+        replacePattern: String,
+        replaceExistingTranslations: Boolean
+    ) {
+        val translationList = translationData
+        for ((i, translationRow) in translationList.withIndex()) {
+            if (!translationRow.containsKey(fromLang) || translationRow.containsKey(toLang) && !replaceExistingTranslations) continue
+            val matcher = regex.matcher(translationRow[fromLang])
+            if (matcher.matches()) {
+                var replace = replacePattern
+                for (j in 0..matcher.groupCount())
+                    replace = replace.replace("$$j", matcher.group(j))
+                this.updateTranslation(i, toLang, replace, translationRow[toLang] ?: "")
+            }
+        }
     }
 }

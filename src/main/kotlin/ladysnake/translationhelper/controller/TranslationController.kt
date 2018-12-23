@@ -17,8 +17,11 @@ import ladysnake.translationhelper.UserSettings
 import ladysnake.translationhelper.model.TranslateAPI
 import ladysnake.translationhelper.model.data.Language
 import ladysnake.translationhelper.model.data.TranslationMap
+import ladysnake.translationhelper.model.workspace.SourceFile
 import ladysnake.translationhelper.model.workspace.SourcesMap
 import ladysnake.translationhelper.model.workspace.TranslationWorkspace
+import ladysnake.translationhelper.model.workspace.toSourceFile
+import ladysnake.translationhelper.view.FindReplaceDialog
 import ladysnake.translationhelper.view.TranslatorView
 import ladysnake.translationhelper.view.language
 import tornadofx.*
@@ -33,7 +36,7 @@ object TranslationController {
             value?.transactionManager?.addListener { Platform.runLater { view.translationTable?.refresh() } }
         }
     private var view: TranslatorView = find(TranslatorView::class)
-    private val autosaveTimer = Timeline(KeyFrame(Duration.seconds(10.0), null, EventHandler { save() }))
+    private val autosaveTimer = Timeline(KeyFrame(Duration.seconds(5.0), null, EventHandler { save() }))
 
     init {
         autosaveTimer.cycleCount = Animation.INDEFINITE
@@ -87,7 +90,7 @@ object TranslationController {
     fun copySelectedCell() {
         val table = view.translationTable ?: return
         val tablePosition = table.focusModel.focusedCell
-        val row = table.items[tablePosition.row] as? TranslationMap.TranslationRow ?: return
+        val row = table.items[tablePosition.row] ?: return
         val content = ClipboardContent()
         val contentString = row[tablePosition.tableColumn.language]
         println("copying $contentString")
@@ -169,9 +172,15 @@ object TranslationController {
         workspace?.addTranslationRow(key)
     }
 
-    fun createFile() {
-        TODO("Language file creation is not supported yet")
+    fun createLangFile(newLangFile: File): CreateLangFileResult {
+        val langFiles = workspace?.sourceFiles ?: kotlin.error("No workspace is setup")
+        val lang = Language(newLangFile.nameWithoutExtension)
+        val file = newLangFile.toSourceFile()
+        langFiles[lang] = file
+        return CreateLangFileResult(lang, file)
     }
+
+    data class CreateLangFileResult(val lang: Language, val file: SourceFile)
 
     fun joker() {
         view.status = "fetching translation"
@@ -210,34 +219,45 @@ object TranslationController {
     fun onEditCommit(event: TableColumn.CellEditEvent<TranslationMap.TranslationRow, Any>) {
         val workspace = this.workspace ?: return
         val language = event.tableColumn.language ?: return
-        workspace.updateTranslation(event.rowValue.key, language, event.newValue as String)
+
+        workspace.updateTranslation(
+            event.rowValue.key,
+            language,
+            event.newValue as? String ?: "",
+            event.oldValue as? String ?: ""
+        )
     }
 
     fun findReplace() {
-        TODO("Find replace not implemented yet")
-/*
-        val findReplaceDialog: FindReplaceDialog
         val table = view.translationTable ?: return
         val availableLanguages = workspace?.translationData?.languages ?: return
+        val workspace = workspace ?: return
         val focusModel = table.focusModel
-        val focusedItem = focusModel.focusedItem as? TranslationMap.TranslationRow ?: return
-        findReplaceDialog = FindReplaceDialog(availableLanguages)
-        findReplaceDialog.setRegex(focusedItem.get(Language("en_us")) ?: "")
-        if (focusModel.focusedCell.tableColumn != null) {
-            val selectedLang = focusModel.focusedCell.tableColumn.language
-            findReplaceDialog.setToLang(selectedLang)
-            findReplaceDialog.setReplace(focusedItem[selectedLang] as String)
+        val focusedItem: TranslationMap.TranslationRow? = focusModel.focusedItem
+        val editableLanguages = availableLanguages.filter { workspace.sourceFiles[it].isEditable }.map { it.name }
+        if (editableLanguages.isEmpty()) {
+            warning("No editable row")
+            return
         }
-        findReplaceDialog.showAndWait().ifPresent({ params ->
+        val findReplaceDialog = FindReplaceDialog(editableLanguages)
+        if (focusedItem != null && focusModel.focusedCell.tableColumn != null) {
+            val selectedLang = focusModel.focusedCell.tableColumn.language ?: return
+            val englishTranslation = focusedItem[Language("en_us")]
+            if (englishTranslation != null) {
+                findReplaceDialog.setRegex(englishTranslation)
+                findReplaceDialog.setFromLang("en_us")
+            }
+            findReplaceDialog.setToLang(selectedLang.name)
+        }
+        findReplaceDialog.showAndWait().ifPresent { (fromLang, toLang, replace, regex, replaceExistingTranslations) ->
             workspace.searchReplace(
-                params.fromLang,
-                params.toLang,
-                params.regex,
-                params.replace,
-                params.replaceExistingTranslations
+                fromLang,
+                toLang,
+                regex,
+                replace,
+                replaceExistingTranslations
             )
-        })
+        }
         table.refresh()
-*/
     }
 }
