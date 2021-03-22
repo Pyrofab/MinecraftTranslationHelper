@@ -1,3 +1,8 @@
+# v2.1.0 - We are alive!
+- Updated to Java 11
+    - Now bundles OpenJFX
+- Table cells now wrap text over multiple lines if it does not fit
+
 # v2.0.0 - The reasonable code update
 
 - Rewrote everything with TornadoFX and fewer disgusting hacks
