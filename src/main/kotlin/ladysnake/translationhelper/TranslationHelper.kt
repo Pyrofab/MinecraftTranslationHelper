@@ -15,7 +15,6 @@ class TranslationHelper: App(TranslatorView::class, AppStyle::class) {
     init {
         TranslationLoader.registerAdapter(PlainLanguageMapAdapter())
         TranslationLoader.registerAdapter(JsonLanguageMapAdapter())
-
     }
 
     override fun start(stage: Stage) {
