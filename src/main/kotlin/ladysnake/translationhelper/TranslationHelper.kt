@@ -9,10 +9,12 @@ import ladysnake.translationhelper.view.TranslatorView
 import tornadofx.App
 import tornadofx.find
 import tornadofx.launch
+import tornadofx.reloadStylesheetsOnFocus
 import java.io.File
 
 class TranslationHelper: App(TranslatorView::class, AppStyle::class) {
     init {
+        reloadStylesheetsOnFocus()
         TranslationLoader.registerAdapter(PlainLanguageMapAdapter())
         TranslationLoader.registerAdapter(JsonLanguageMapAdapter())
     }

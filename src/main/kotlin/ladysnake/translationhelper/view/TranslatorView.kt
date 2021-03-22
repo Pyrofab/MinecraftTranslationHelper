@@ -9,7 +9,6 @@ import javafx.scene.control.SelectionMode
 import javafx.scene.control.TableColumn
 import javafx.scene.control.TableView
 import javafx.scene.control.ToggleButton
-import javafx.scene.control.cell.TextFieldTableCell
 import javafx.scene.image.Image
 import javafx.stage.DirectoryChooser
 import javafx.stage.FileChooser
@@ -223,9 +222,10 @@ class TranslatorView : View() {
                 source.editableProperty.bindBidirectional(selectedProperty())
             }
             setCellFactory {
-                TextFieldTableCell<TranslationMap.TranslationRow, String>(DefaultStringConverter())
+                TextAreaTableCell<TranslationMap.TranslationRow, String>(DefaultStringConverter()).apply {
+                    isWrapText = true
+                }
             }
         }
     }
-
 }
