@@ -1,4 +1,3 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -36,12 +35,8 @@ dependencies {
 application {
     mainModule.set("ladysnake.translationhelper.app")
     mainClass.set("ladysnake.translationhelper.TranslationHelperKt")
-}
-
-tasks.withType<ShadowJar> {
-    manifest {
-        attributes["Main-Class"] = "ladysnake.translationhelper.TranslationHelper"
-    }
+    // Shadow still uses the old attribute
+    mainClassName = mainClass.get()
 }
 
 configure<JavaPluginConvention> {
